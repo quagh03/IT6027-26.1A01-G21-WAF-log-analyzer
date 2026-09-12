@@ -130,7 +130,7 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 | Quyết định | Lựa chọn chốt |
 |------------|----------------|
 | Realtime bus | Apache Kafka (KRaft single-node) |
-| Security backend | Spring Boot 3, **Java 17** |
+| Security backend | Spring Boot 3, **Java 25** |
 | Tầng workload | **Tự compose** Juice Shop + Nginx JSON log |
 | Log shipper | Filebeat → Kafka theo mẫu **SIEM-in-a-box** |
 | Không clone nguyên elk-lab | Chỉ tham khảo ý tưởng; tự kiểm soát Compose |
