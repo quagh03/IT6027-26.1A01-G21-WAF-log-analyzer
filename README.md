@@ -5,7 +5,7 @@
 
 | Trường | Giá trị |
 |--------|---------|
-| Phiên bản | `1.2` |
+| Phiên bản | `1.3` |
 | Ngày | 2026-09-12 |
 | Trạng thái | **Approved for implementation** (đã chốt quyết định) |
 | Tác giả | (điền tên sinh viên) |
@@ -64,15 +64,15 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 | O6 | Dashboard | Timeline, top attack type, top IP, top path; realtime qua **SSE** (alert + incident) |
 | O7 | Demo dataset | Compose + hướng dẫn reproduce; script probe lab (curl/k6) + traffic browse bình thường |
 | O8 | Đánh giá | Bảng FP/FN thô trên bộ test tự định nghĩa (~50 clean + ~30 probe) |
-| O9 | Incident + LLM | Mỗi alert tạo **Incident**; LLM explain **async** bắt buộc (profile `llm`); UI ghi rõ AI-assisted |
+| O9 | Incident + LLM | **Promote có phân cấp** (immediate + aggregate); LLM explain **async** khi Incident được tạo (profile `llm`); UI ghi rõ AI-assisted |
 | O10 | Báo cáo môn học | Chương kỹ thuật + chương chính sách (NIST CSF chính) + hạn chế hệ thống |
 
 ### 2.3 Demo flow chuẩn (8–10 phút)
 
 1. Mở Juice Shop qua Nginx → tạo traffic bình thường  
 2. Chạy script probe (SQLi/XSS/path traversal) trong lab  
-3. Filebeat đẩy log → Kafka → Spring detect → **alert + incident** xuất hiện trên dashboard (SSE)  
-4. Drill-down incident → request + rule hits + score  
+3. Filebeat đẩy log → Kafka → Spring detect → **alert** lên dashboard; **incident** xuất hiện khi đủ điều kiện promote  
+4. Drill-down incident → danh sách alert liên quan + rule hits + score  
 5. Chờ (hoặc xem trạng thái) **LLM explain async** cập nhật lên incident (không chặn bước 3)  
 6. Xem thống kê theo `app_id` / host trên dashboard (không bắt buộc export PDF trong MVP)
 
@@ -86,8 +86,8 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 - Canonical event model + persistence (**PostgreSQL + Flyway**)
 - Rule engine tự viết (regex/signature + weight), seed **8–15 rule** (categories: SQLI, XSS, PATH_TRAVERSAL)
 - Risk scoring: rule weight + frequency window **N = 5 phút**
-- Alert lifecycle: `OPEN` / `ACK` / `CLOSED` — **1 alert gắn 1 event** (không aggregate alert trong MVP)
-- **Incident:** mỗi alert tạo **1 incident** (1–1 MVP); triage trên Incident (`OPEN` / `ACK` / `CLOSED`)
+- Alert lifecycle: vẫn **1 alert gắn 1 event**; alert có thể **chưa** thuộc incident (`incident_id` nullable)
+- **Incident (phân cấp + tổng hợp):** không còn 1 alert = 1 incident. Promote theo policy §7.4; triage trên Incident (`OPEN` / `ACK` / `CLOSED`); quan hệ **1 incident : N alerts**
 - Application scoping theo `host` → `app_id` (có thể dùng thêm host giả lập để demo multi-scope trên 1 app)
 - Rule seed qua Flyway; **admin rule CRUD API** nằm trong MVP (bật/tắt, sửa weight)
 - REST API + **React** SOC dashboard
@@ -111,8 +111,8 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 | Deep inspection response body / TLS MITM | Out |
 | DVWA app #2 | **Phase 2** (sau MVP) |
 | Topic `normalized-web-events` | **Không dùng** — normalize in-process |
-| Session/IP correlation phức tạp | Ngoài MVP (chỉ dùng freq trong 5 phút cho scoring) |
-| Aggregate nhiều alert → 1 incident | **Phase 2** (MVP giữ 1 alert : 1 incident) |
+| Session/IP correlation phức tạp (device fingerprint, multi-hop) | Ngoài MVP |
+| Incident correlation vượt ngoài key `(app_id, client_ip)` + cửa sổ thời gian | Ngoài MVP (giữ rule §7.4) |
 | Analyst False Positive mark + auto-adjust weight | Ngoài MVP |
 | Export PDF/CSV báo cáo tuần | Ngoài MVP |
 | LLM triage assistant + weekly narrative | Ngoài MVP (chỉ explain async trên Incident) |
@@ -123,7 +123,7 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 ### 3.3 Phase 2 (sau khi MVP ổn)
 
 - Thêm DVWA + multi-app thật
-- Aggregate nhiều alert → 1 incident (theo IP / cửa sổ thời gian)
+- Correlation giàu hơn (cùng path pattern / category / UA cluster)
 - FP feedback loop
 - Weekly narrative LLM + export báo cáo
 - (Tuỳ chọn) Kafka UI cố định trong compose
@@ -142,7 +142,7 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 | Auth | **JWT**, role `admin` |
 | Migration | **Flyway** |
 | LLM | **Bắt buộc**, **Ollama**, **incident explain async** (không block detect/alert) |
-| Incident | **MVP:** 1 alert → 1 incident; triage trên Incident |
+| Incident | **Phân cấp + tổng hợp:** CRITICAL promote ngay; MEDIUM/HIGH gom theo `(app_id, client_ip)` + cửa sổ; **1 incident : N alerts**; triage trên Incident |
 | Kafka topics | `raw-web-logs`, `security-alerts` |
 | Normalize | In-process trong Spring |
 | Scoring | Per-request; threshold mặc định **60**; cửa sổ freq **5 phút** |
@@ -198,17 +198,27 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
                                    └─────────────────────┘
 ```
 
-Luồng Incident + LLM (MVP):
+Luồng Alert → Incident + LLM (MVP):
 
 ```text
 score ≥ threshold
-  → tạo Alert (1-1 event) + persist
-  → tạo Incident (1-1 alert), explanation_status=PENDING|SKIPPED
-  → publish Kafka security-alerts + SSE ngay (không chờ LLM)
-  → enqueue job async (profile llm):
-        WebClient → Ollama
-        → ghi explanation + confidence + READY|FAILED
-        → SSE cập nhật incident (tuỳ chọn event type explanation.ready)
+  → tạo Alert (1-1 event) + SSE alert ngay
+  → Incident Manager đánh giá policy §7.4:
+
+      [IMMEDIATE] severity = CRITICAL
+          → nếu có Incident OPEN cùng key (app_id, client_ip) trong cửa sổ W
+                gắn alert vào incident đó (cập nhật severity/score/alert_count)
+          → ngược lại tạo Incident mới + gắn alert
+          → enqueue LLM async (lần đầu tạo; hoặc khi CRITICAL mới gắn — xem §9)
+
+      [AGGREGATE] severity ∈ {MEDIUM, HIGH}
+          → nếu có Incident OPEN cùng key trong W: gắn alert vào incident (không bắt buộc re-explain)
+          → nếu chưa có: đếm alert chưa gắn incident cùng key trong W
+                nếu count ≥ K (=3): tạo Incident + gắn các alert đó + enqueue LLM async
+                nếu count < K: chỉ giữ Alert (chưa thành Incident)
+
+  → SSE incident khi tạo mới / cập nhật gắn alert
+  → LLM (profile llm) chạy async, không block detect/alert
 ```
 
 ### 4.2 Kafka topics (chốt)
@@ -216,7 +226,7 @@ score ≥ threshold
 | Topic | Producer | Consumer | Nội dung |
 |-------|----------|----------|----------|
 | `raw-web-logs` | Filebeat | Spring Ingest | Dòng log Nginx JSON (+ metadata Filebeat) |
-| `security-alerts` | Spring Alert/Incident Manager | Spring SSE bridge (cùng app hoặc listener) | Alert/Incident JSON đã chấm điểm |
+| `security-alerts` | Spring Alert/Incident Manager | Spring SSE bridge (cùng app hoặc listener) | Alert JSON; có thể kèm `incident_id` nếu đã promote |
 
 Frontend **không** đọc Kafka. React nhận alert/incident qua **SSE** từ Spring.
 
@@ -228,11 +238,11 @@ Frontend **không** đọc Kafka. React nhận alert/incident qua **SSE** từ S
 | `normalize` | Parse Nginx JSON → `WebEvent`; map `host` → `app_id` |
 | `rules` | Load rule từ DB, evaluate regex theo field |
 | `scoring` | `base + freq_bonus(5m) + status_bonus` → score 0–100 |
-| `alert` | Nếu score ≥ threshold app → tạo alert 1-1 với event, publish `security-alerts` |
-| `incident` | Tạo Incident 1-1 từ Alert; lifecycle triage; cập nhật explanation từ LLM job |
+| `alert` | Nếu score ≥ threshold app → tạo alert 1-1 với event, publish/SSE |
+| `incident` | Policy promote §7.4 (immediate/aggregate); gắn N alerts; lifecycle triage; trigger LLM khi Incident mới |
 | `api` | REST events/alerts/incidents/apps/rules/stats |
 | `realtime` | SSE fan-out alert + incident |
-| `llm` | Async explain sau khi tạo Incident; `POST .../incidents/{id}/explain` để retry (profile `llm`) |
+| `llm` | Async explain khi Incident được **tạo**; `POST .../incidents/{id}/explain` để retry (profile `llm`) |
 | `security` | Spring Security + JWT |
 
 ---
@@ -344,11 +354,11 @@ Kafka UI: **không** nằm trong compose mặc định (tránh nặng máy chấ
 
 **DetectionHit** — `id`, `event_id`, `rule_id`, `evidence`, `weight`, `created_at`
 
-**Alert** — `id`, `app_id`, `event_id` (**NOT NULL**, quan hệ 1-1 MVP), `severity`, `score`, `title`, `summary`, `status` (`OPEN`|`ACK`|`CLOSED`), `created_at`, `updated_at`
+**Alert** — `id`, `app_id`, `event_id` (**NOT NULL**, quan hệ 1-1 event), `incident_id` (**nullable** — null = chưa promote), `client_ip`, `severity`, `score`, `title`, `summary`, `status` (`OPEN`|`ACK`|`CLOSED`), `created_at`, `updated_at`
 
-**Incident** — `id`, `alert_id` (**NOT NULL**, UNIQUE, quan hệ 1-1 MVP), `app_id`, `severity`, `score`, `title`, `status` (`OPEN`|`ACK`|`CLOSED`), `explanation` (nullable), `explanation_confidence` (nullable, định tính: `LOW`|`MEDIUM`|`HIGH`), `explanation_status` (`PENDING`|`READY`|`FAILED`|`SKIPPED`), `explanation_error` (nullable), `explained_at` (nullable), `created_at`, `updated_at`
+**Incident** — `id`, `app_id`, `client_ip` (correlation key), `severity` (max của alerts thành viên), `score` (max), `alert_count`, `title`, `status` (`OPEN`|`ACK`|`CLOSED`), `promote_reason` (`IMMEDIATE`|`AGGREGATE`), `explanation` (nullable), `explanation_confidence` (nullable: `LOW`|`MEDIUM`|`HIGH`), `explanation_status` (`PENDING`|`READY`|`FAILED`|`SKIPPED`), `explanation_error` (nullable), `explained_at` (nullable), `opened_at`, `created_at`, `updated_at`
 
-> MVP: SOC triage trên **Incident**. Alert vẫn persist làm bản ghi detection thô. Phase 2 mới xét gộp nhiều alert vào một incident.
+> Quan hệ: **1 Incident : N Alerts**. SOC triage trên **Incident**. Alert luôn persist; chỉ một phần alert đủ điều kiện mới thành / gắn vào Incident.
 
 ### 7.2 Rule categories MVP
 
@@ -372,28 +382,47 @@ Alert khi `score >= application.risk_threshold`.
 
 Severity gợi ý: `LOW` (&lt;40 lưu event thôi), `MEDIUM` (40–69), `HIGH` (70–84), `CRITICAL` (≥85) — alert vẫn chỉ tạo khi vượt threshold app.
 
+### 7.4 Incident promotion policy (chốt)
+
+```text
+W = 5 phút                          # cửa sổ correlation incident
+K = 3                               # ngưỡng đếm cho nhánh AGGREGATE
+correlation_key = (app_id, client_ip)
+chỉ xét Incident.status = OPEN trong cửa sổ W
+```
+
+| Nhánh | Điều kiện alert | Hành vi |
+|-------|-----------------|--------|
+| **IMMEDIATE** | `severity = CRITICAL` | 1 alert đủ tạo Incident (hoặc gắn vào Incident OPEN cùng key). Promote ngay. |
+| **AGGREGATE** | `severity ∈ {MEDIUM, HIGH}` | Nếu đã có Incident OPEN cùng key → gắn thêm. Nếu chưa: khi số alert **chưa gắn incident** cùng key trong W **≥ K** → tạo Incident và gắn các alert đó. |
+| **Chưa promote** | AGGREGATE nhưng `count < K` | Chỉ hiển thị Alert; chưa có Incident / chưa gọi LLM. |
+
+Số liệu chốt MVP: `W = 5 phút`, `K = 3`. Có thể cấu hình trong `application.yml` (không cần UI admin trong MVP).
+
+Khi gắn thêm alert vào Incident đã có: cập nhật `alert_count`, `severity = max`, `score = max`. **Không** auto re-call LLM (tránh spam Ollama); analyst dùng API retry nếu cần.
+
 ---
 
 ## 8. API bề mặt (MVP)
 
 | Method | Path | Mô tả |
 |--------|------|-------|
-| POST | `/api/auth/login` | Đổi credential → JWT |
+| POST | `/api/oauth/tokens` | Đổi credential → JWT |
 | GET | `/api/events` | Query events (filter app, time, score) |
 | GET | `/api/events/{id}` | Chi tiết + hits |
 | GET | `/api/alerts` | Danh sách alert |
 | GET | `/api/alerts/{id}` | Chi tiết alert |
 | GET | `/api/incidents` | Danh sách incident (filter status, app, explanation_status) |
-| GET | `/api/incidents/{id}` | Chi tiết incident + alert/event/hits + explanation |
+| GET | `/api/incidents/{id}` | Chi tiết incident + **danh sách alerts** + events/hits + explanation |
 | PATCH | `/api/incidents/{id}` | Đổi status ACK/CLOSED (triage) |
 | GET | `/api/apps` | Danh sách application scope |
 | GET/POST/PATCH | `/api/rules` | Quản trị rule (admin JWT) |
 | GET | `/api/stats/overview` | KPI dashboard |
-| GET | `/api/stream/alerts` | **SSE** realtime alert |
-| GET | `/api/stream/incidents` | **SSE** realtime incident (+ cập nhật explanation) |
+| GET | `/api/stream/alerts` | **SSE** realtime alert (kể cả alert chưa thành incident) |
+| GET | `/api/stream/incidents` | **SSE** realtime incident (+ cập nhật explanation / gắn alert) |
 | POST | `/api/incidents/{id}/explain` | Retry LLM explain (async; profile `llm`) |
 
-> `PATCH /api/alerts/{id}` không còn là API triage chính — triage qua Incident.
+> Triage chính trên Incident. Alert feed vẫn cần để demo alert chưa đủ K / chưa promote.
 
 ---
 
@@ -401,18 +430,20 @@ Severity gợi ý: `LOW` (&lt;40 lưu event thôi), `MEDIUM` (40–69), `HIGH` (
 
 ### 9.1 Use case MVP (bắt buộc)
 
-**Incident explanation (async)** — sau khi tạo Incident, hệ thống **tự enqueue** job gọi Ollama (không block ingest/alert/SSE).
+**Incident explanation (async)** — chỉ khi Incident **được tạo mới** (IMMEDIATE hoặc AGGREGATE đủ K), hệ thống **tự enqueue** job gọi Ollama (không block ingest/alert/SSE).
 
-- Input: `WebEvent` + `DetectionHit[]` (+ metadata Incident/Alert) đã sanitize  
+- Input: tóm tắt Incident + tối đa **N=5** alert mới nhất (mỗi alert: WebEvent + DetectionHit[] đã sanitize)  
 - Output: giải thích tiếng Việt + mức tin cậy định tính → ghi vào Incident  
 - Trạng thái: `PENDING` → `READY` | `FAILED`; nếu tắt profile `llm` → `SKIPPED`  
+- Gắn thêm alert vào Incident đã có: **không** auto re-explain  
 - API `POST /api/incidents/{id}/explain` chỉ dùng để **retry** (cũng async)
 
 ### 9.2 Ngoài MVP
 
 - Triage assistant  
 - Weekly report narrative  
-- Aggregate multi-alert incident trước khi explain  
+- Auto re-explain mỗi lần gắn alert mới  
+- Correlation ngoài `(app_id, client_ip)` + cửa sổ W  
 
 ### 9.3 Ràng buộc
 
@@ -489,7 +520,7 @@ Compose + script reproduce + mẫu raw log (nếu cần offline) trong `datasets
 
 | Tuần | Việc | Deliverable |
 |------|------|-------------|
-| 1 | Chốt design (done), outline báo cáo NIST, schema Flyway | SOLUTION_DESIGN v1.2 |
+| 1 | Chốt design (done), outline báo cáo NIST, schema Flyway | SOLUTION_DESIGN v1.3 |
 | 2 | Compose: Juice + Nginx JSON + Filebeat → Kafka | `raw-web-logs` có data |
 | 3 | Spring ingest + normalize + persist | API events |
 | 4 | Rule engine + scoring + seed rules | Hits + score |
@@ -539,9 +570,9 @@ CyberSecurity/
 | Scope phình | Đã khoá §3.2; ModSec/DVWA/PDF/FP-loop = không MVP |
 | Máy chấm bài yếu | Ollama theo profile `llm`; không Kafka UI mặc định |
 | Parse log brittle | Nginx JSON schema cố định §5.4 |
-| Alert noise | 8–15 rule; threshold 60; ACK workflow trên Incident |
-| LLM chậm / sập | Gọi **async**; timeout; `FAILED`/`SKIPPED`; không block SSE |
-| LLM bịa | Ground bằng rule hits; chỉ explain trên Incident |
+| Alert noise | Threshold 60; Incident chỉ mở khi CRITICAL hoặc đủ K=3; ACK trên Incident |
+| LLM chậm / sập | Gọi **async** khi Incident mới tạo; timeout; `FAILED`/`SKIPPED`; không block SSE |
+| LLM bịa | Ground bằng rule hits của nhiều alert trong Incident; chỉ explain |
 | Trùng đồ án | Không fork Watch-Tower |
 
 ---
@@ -563,9 +594,9 @@ CyberSecurity/
 | Khung quản trị? | **NIST CSF chính**, ISO phụ |
 | Apache / FP mark / PDF export? | **Ngoài MVP** |
 | Java version? | **17** |
-| Alert 1-1 hay aggregate? | **1 alert : 1 event** |
-| Incident? | **MVP: 1 alert → 1 incident**; aggregate multi-alert = Phase 2 |
-| LLM sync hay async? | **Async** sau tạo Incident; API explain = retry |
+| Alert 1-1 hay aggregate? | **1 alert : 1 event** (detection); Incident thì **1 : N alerts** |
+| Incident? | **Phân cấp:** CRITICAL → IMMEDIATE; MEDIUM/HIGH → AGGREGATE (K=3, W=5p, key=`app_id+client_ip`) |
+| LLM sync hay async? | **Async** khi Incident **mới tạo**; API explain = retry |
 
 Còn lại chỉ là metadata hành chính (tên SV, deadline môn, có làm nhóm không) — không chặn implementation.
 
@@ -577,4 +608,5 @@ Còn lại chỉ là metadata hành chính (tên SV, deadline môn, có làm nh�
 |---------|------|-------|
 | 1.0 | 2026-09-12 | Khởi tạo draft: scope, Kafka, Spring, reuse tầng trên, LLM extension |
 | 1.1 | 2026-09-12 | **Chốt quyết định:** tự compose Juice+Nginx; React+SSE+JWT; Flyway; topics raw+alerts; Ollama explain bắt buộc; DVWA/ModSec/Apache/PDF/FP-loop ngoài MVP; scoring 60/5p; java 25; NIST CSF chính; đóng open questions |
-| 1.2 | 2026-09-12 | **Thêm Incident (1 alert → 1 incident MVP)**; LLM explain **async** sau tạo Incident (không block alert/SSE); API triage/explain trên Incident; SSE incidents; aggregate multi-alert = Phase 2 |
+| 1.2 | 2026-09-12 | **Thêm Incident**; LLM explain **async**; API triage/explain trên Incident; SSE incidents |
+| 1.3 | 2026-09-12 | **Sửa Incident:** bỏ 1–1; phân cấp IMMEDIATE (CRITICAL) + AGGREGATE (MEDIUM/HIGH, K=3, W=5p, key app_id+IP); quan hệ 1 incident : N alerts; LLM chỉ khi Incident mới tạo |
