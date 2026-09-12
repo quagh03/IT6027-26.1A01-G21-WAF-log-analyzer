@@ -5,7 +5,7 @@
 
 | Trường | Giá trị |
 |--------|---------|
-| Phiên bản | `1.0` |
+| Phiên bản | `1.1` |
 | Ngày | 2026-09-12 |
 | Trạng thái | **Approved for implementation** (đã chốt quyết định) |
 | Tác giả | (điền tên sinh viên) |
