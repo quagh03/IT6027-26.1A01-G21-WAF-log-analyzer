@@ -271,7 +271,7 @@ Dùng các field sau (tên cố định trong config Nginx):
 
 | Lớp | Công nghệ |
 |-----|-----------|
-| Language / Framework | **Java 17**, Spring Boot 3 |
+| Language / Framework | **Java 25**, Spring Boot 3 |
 | Messaging | Apache Kafka (KRaft single-node) |
 | DB | PostgreSQL 16 + **Flyway** |
 | Security (SOC) | Spring Security + **JWT** |
