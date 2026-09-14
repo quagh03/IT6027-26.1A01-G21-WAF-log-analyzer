@@ -5,7 +5,7 @@
 
 | Trường | Giá trị |
 |--------|---------|
-| Phiên bản | `1.3` |
+| Phiên bản | `1.4` |
 | Ngày | 2026-09-12 |
 | Trạng thái | **Approved for implementation** (đã chốt quyết định) |
 | Tác giả | (điền tên sinh viên) |
@@ -62,7 +62,7 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 | O4 | Score | Mỗi **request** có risk score 0–100; alert khi `score >= 60` (threshold theo app, mặc định 60) |
 | O5 | Scope | Lọc/cảnh báo theo `app_id` / `host` trên **Juice Shop** (MVP). Multi-app DVWA = phase 2 |
 | O6 | Dashboard | Timeline, top attack type, top IP, top path; realtime qua **SSE** (alert + incident) |
-| O7 | Demo dataset | Compose + hướng dẫn reproduce; script probe lab (curl/k6) + traffic browse bình thường |
+| O7 | Demo dataset | Compose + **Attack Scenario Runner** (`datasets/probes`) + traffic browse sạch; reproduce được |
 | O8 | Đánh giá | Bảng FP/FN thô trên bộ test tự định nghĩa (~50 clean + ~30 probe) |
 | O9 | Incident + LLM | **Promote có phân cấp** (immediate + aggregate); LLM explain **async** khi Incident được tạo (profile `llm`); UI ghi rõ AI-assisted |
 | O10 | Báo cáo môn học | Chương kỹ thuật + chương chính sách (NIST CSF chính) + hạn chế hệ thống |
@@ -96,6 +96,7 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 - Kafka topics: **`raw-web-logs`** + **`security-alerts`**
 - LLM: **Ollama local**, use case duy nhất MVP = **incident explain**; gọi **bất đồng bộ** sau khi tạo Incident (không block alert/SSE); có API retry thủ công
 - Docker Compose chạy toàn bộ lab (không bắt buộc Kafka UI / không bắt buộc Ollama luôn bật nếu máy yếu — có profile)
+- **Attack Scenario Runner** trong `datasets/probes` (scenarios có nhãn + script chạy tự động qua Nginx)
 - Tài liệu: SOLUTION_DESIGN + README + báo cáo PDF + slide
 
 ### 3.2 Out-of-scope / trì hoãn — đã khoá
@@ -271,6 +272,7 @@ Frontend **không** đọc Kafka. React nhận alert/incident qua **SSE** từ S
 3. Filebeat → `kafka:9092`, topic `raw-web-logs`  
 4. Metadata: `host`, `log_type=access`; `app_id` resolve ở Spring từ `host`  
 5. Không đặt detection logic trong Filebeat/Nginx  
+6. Có **Attack Scenario Runner** (§5.5) trong `datasets/` để sinh log tấn công có kiểm soát  
 
 ### 5.4 Nginx JSON log — schema chốt
 
@@ -292,6 +294,38 @@ Dùng các field sau (tên cố định trong config Nginx):
 
 **Map `app_id` (MVP):** bảng `Application` map `host` pattern → `app_id`.  
 Để demo multi-scope trước phase 2: cấu hình thêm 1 server_name giả (ví dụ `juice.lab.local` và `shop.lab.local`) cùng upstream Juice Shop.
+
+### 5.5 Attack Scenario Runner (upstream — chốt)
+
+Juice Shop **không** tự sinh kịch bản tấn công. Lab cần **runner** phía client (qua Nginx) để tạo access log có nhãn, phục vụ demo + đo FP/FN.
+
+**Chiến lược MVP (đã chọn):** tự viết script trong monorepo — **không** phụ thuộc Metasploit / scanner nặng.
+
+| Thành phần | Vai trò |
+|------------|---------|
+| `datasets/probes/scenarios.yaml` (hoặc JSON) | Danh sách kịch bản: `id`, `category` (`SQLI`\|`XSS`\|`PATH_TRAVERSAL`), `method`, `path`, `query`, `expected` (`alert`\|`clean`), `note` |
+| `datasets/probes/run.sh` hoặc `run.py` | Đọc scenarios → gọi HTTP tới host lab (qua Nginx), có delay nhẹ, log kết quả chạy |
+| `datasets/probes/browse_clean.sh` | Traffic “sạch” (~50 request browse path phổ biến Juice Shop) |
+| `datasets/ground_truth.csv` | Nhãn kỳ vọng để đối chiếu detector |
+
+**Yêu cầu runner:**
+
+1. Chỉ nhắm URL lab local (Juice Shop qua Nginx) — ghi rõ trong README ethics  
+2. Cover đủ 3 category detect + một phần request sạch  
+3. Payload nằm trên **query/path/UA** (đúng tầm nhìn access log; không phụ thuộc POST body)  
+4. Có thể chạy một lệnh sau khi Compose up: `./datasets/probes/run.sh`  
+5. Tuỳ chọn: dùng **k6** nếu cần lặp/tải nhẹ; mặc định **curl/bash hoặc Python requests** là đủ  
+
+**Không chọn làm runner chính MVP:** OWASP ZAP full scan, Nuclei mass template, sqlmap tự động — dễ phình scope, khó gắn ground truth từng request, và có thể sinh quá nhiều noise.
+
+**Luồng demo:**
+
+```text
+Compose up → browse_clean (tuỳ chọn)
+           → run.sh (probe scenarios)
+           → Nginx JSON log → Filebeat → Kafka → Spring detect
+           → Alert / Incident trên SOC UI
+```
 
 ---
 
@@ -522,10 +556,10 @@ Compose + script reproduce + mẫu raw log (nếu cần offline) trong `datasets
 |------|------|-------------|
 | 1 | Chốt design (done), outline báo cáo NIST, schema Flyway | SOLUTION_DESIGN v1.3 |
 | 2 | Compose: Juice + Nginx JSON + Filebeat → Kafka | `raw-web-logs` có data |
-| 3 | Spring ingest + normalize + persist | API events |
+| 3 | Spring ingest + normalize + persist; skeleton `datasets/probes` | API events + runner khung |
 | 4 | Rule engine + scoring + seed rules | Hits + score |
 | 5 | Alert + Incident + JWT + publish `security-alerts` + SSE | Alert/Incident realtime |
-| 6 | React SOC dashboard + datasets/scripts | Demo O1–O8 |
+| 6 | React SOC + hoàn thiện Attack Scenario Runner + ground truth | Demo O1–O8 |
 | 7 | Ollama explain **async** + chương quản trị NIST | O9 + draft báo cáo |
 | 8 | Đo FP/FN, polish, slide, buffer | Nộp BTL |
 
@@ -545,7 +579,7 @@ Compose + script reproduce + mẫu raw log (nếu cần offline) trong `datasets
 ## 14. Cấu trúc repo (chốt monorepo)
 
 ```text
-CyberSecurity/
+IT6027-26.1A01-G21-WAF-log-analyzer/
 ├── SOLUTION_DESIGN.md
 ├── README.md
 ├── docker-compose.yml
@@ -555,7 +589,9 @@ CyberSecurity/
 │   └── kafka/
 ├── backend/                    # Spring Boot security platform
 ├── frontend/                   # React SOC dashboard
-├── datasets/                   # ground truth + probe scripts + sample logs
+├── datasets/                   # ground truth + Attack Scenario Runner + sample logs
+│   ├── probes/                 # scenarios.yaml + run.sh + browse_clean.sh
+│   └── ground_truth.csv
 └── docs/
     ├── report/
     └── slides/
@@ -610,3 +646,4 @@ Còn lại chỉ là metadata hành chính (tên SV, deadline môn, có làm nh�
 | 1.1 | 2026-09-12 | **Chốt quyết định:** tự compose Juice+Nginx; React+SSE+JWT; Flyway; topics raw+alerts; Ollama explain bắt buộc; DVWA/ModSec/Apache/PDF/FP-loop ngoài MVP; scoring 60/5p; java 25; NIST CSF chính; đóng open questions |
 | 1.2 | 2026-09-12 | **Thêm Incident**; LLM explain **async**; API triage/explain trên Incident; SSE incidents |
 | 1.3 | 2026-09-12 | **Sửa Incident:** bỏ 1–1; phân cấp IMMEDIATE (CRITICAL) + AGGREGATE (MEDIUM/HIGH, K=3, W=5p, key app_id+IP); quan hệ 1 incident : N alerts; LLM chỉ khi Incident mới tạo |
+| 1.4 | 2026-09-12 | **Chốt Attack Scenario Runner** ở upstream: `datasets/probes` (scenarios có nhãn + script tự chạy qua Nginx); không dùng ZAP/Nuclei/sqlmap làm runner chính MVP |
