@@ -34,6 +34,43 @@ detection-rule-generator/
 
 Full upstream clones stay in `data/raw/_upstream/` (gitignored). FuzzDB is **extracted by category only** — never dumped into a prompt.
 
+## Python does not call Cursor
+
+The pipeline **does not** invoke Cursor, OpenAI, or Ollama. No API keys, no HTTP client, no `cursor` subprocess.
+
+The two sides stay separate:
+
+| Piece | Who runs it | What it does |
+|-------|-------------|--------------|
+| `python -m pipeline …` | Script | Data: ingest → cluster card → compile regex → eval |
+| Cursor chat | You | Read a prompt + **one** cluster card → write abstract JSON |
+
+`python -m pipeline run` only compiles files **already present** in `ai/outputs/`. This repo ships 14 seeded abstracts (from the Cursor mining session). To add a rule, open a chat — do not change Python to “call” a model.
+
+```text
+python -m pipeline split
+        ↓
+data/clustered/SQLI-BOOLEAN_TAUTOLOGY.json     ← compact card, not the full 30k
+        ↓
+Cursor chat: @ ai/prompts/rule-generator.md
+             @ data/clustered/<one-card>.json
+        ↓
+Save JSON → ai/outputs/<id>.json
+        ↓
+python -m pipeline compile      ← reads that file, maps type → regex
+python -m pipeline evaluate
+```
+
+Three markdown prompts (attach in chat):
+
+| File | When |
+|------|------|
+| `ai/prompts/rule-generator.md` | Emit one abstract from a cluster card |
+| `ai/prompts/rule-reviewer.md` | ACCEPT / NARROW / REJECT after eval |
+| `ai/prompts/rule-optimizer.md` | High FPR or misses on held-out / adversarial |
+
+Generator constraints: abstract only (no production regex), do not overfit a single payload, access-log fields only (`path` / `query` / `ua` / `raw`).
+
 ## Setup
 
 ```bash
@@ -58,19 +95,19 @@ python -m pipeline normalize
 python -m pipeline dedupe
 python -m pipeline split       # 70% generation / 30% held-out; cards in data/clustered/
 python -m pipeline adversarial
-python -m pipeline compile     # bắt buộc: ai/outputs/*.json → rules/candidates/
+python -m pipeline compile     # required: ai/outputs/*.json → rules/candidates/
 python -m pipeline evaluate --promote
-
-`prepare` **dừng trước compile**. `evaluate` cần `ai/outputs/*.json` (repo đã có 14 file mẫu). Chạy từ `detection-rule-generator/` trong monorepo — bản copy thiếu `ai/outputs/` sẽ fail.
 python -m pipeline export-flyway
 ```
 
-Cursor loop (no API keys):
+`prepare` **stops before compile**. `evaluate` needs `ai/outputs/*.json` (this repo already has 14 samples). Run from `detection-rule-generator/` in the monorepo — a copy missing `ai/outputs/` will fail.
 
-1. Open one file under `data/clustered/*.json` (do **not** paste the full corpus).
-2. Follow `ai/prompts/rule-generator.md` → save `ai/outputs/<id>.json`.
+Add or edit a rule with Cursor:
+
+1. Open **one** `data/clustered/*.json` file (do not paste the full corpus).
+2. Chat with `ai/prompts/rule-generator.md` → save `ai/outputs/<id>.json`.
 3. `python -m pipeline compile`.
-4. `python -m pipeline evaluate` — if FPR is high use `rule-reviewer.md` / `rule-optimizer.md`.
+4. `python -m pipeline evaluate` — if FPR is high, use `rule-reviewer.md` / `rule-optimizer.md`.
 5. `--promote` copies gate-passing rules to `rules/production/`.
 
 ## Sources (download order)
