@@ -1,0 +1,13 @@
+{
+  "code": "SQLI-UNION-001",
+  "name": "UNION SELECT injection",
+  "category": "SQLI",
+  "pattern": "(?i)\\bunion\\b(?:\\s+|%20|\\+)+(?:all(?:\\s+|%20|\\+)+)?\\bselect\\b",
+  "target_field": "query",
+  "weight": 55,
+  "enabled": true,
+  "description": "Detects UNION SELECT used to append an attacker query in the query string.",
+  "source": "AI_MINED",
+  "generator_rule_id": "SQLI-UNION-001",
+  "rule_version": "1.0.0"
+}

@@ -1,0 +1,38 @@
+{
+  "cluster_id": "SQLI-OTHER",
+  "category": "SQLI",
+  "subcategory": "OTHER",
+  "suggested_rule_id": "SQLI-OTHER-001",
+  "suggested_target_field": "query",
+  "count": 1352,
+  "positive_examples": [
+    "declare @q nvarchar   (  200  )   0x730065006c00650063007400200040004000760065007200730069006f006e00 exec  (  @q  )",
+    "1,iif  (  6333  =  1227,1,1/0  )",
+    "1\";iif(5257=5257,1,1/0)",
+    "1'+  (  select 'vddk' where 6961  =  6961",
+    "make_set  (  5679  =  9769,9769  )",
+    "1',(convert(int,(select char(113)+char(113)+char(112)+char(106)+char(113)+(select (case when (4932=4932) then char(49) else char(48) end))+char(113)+char(122)+char(118)+char(122)+char(113))))",
+    "1\"   )    )    as nncz where 2331  =  2331",
+    "1\"\"(.'.(,(.",
+    "1  )   where 6472  =  6472",
+    "iif  (  9229  =  4158,1,1/0  )",
+    "1\"  )   where 9115  =  9115",
+    "1\"   )    )    as nejd where 2885  =  2885"
+  ],
+  "negative_examples": [
+    "monino",
+    "6657407608418544",
+    "ademaro",
+    "ba46ea5",
+    "1erso",
+    "calle madagascar 130",
+    "0769789407660165",
+    "51egible"
+  ],
+  "source_datasets": [
+    "FuzzDB",
+    "HttpParamsDataset",
+    "modified-sql-dataset"
+  ],
+  "notes": "Use this card with ai/prompts/rule-generator.md. Emit one abstract rule JSON only. Do not paste the full corpus. Do not overfit a single payload. Rules must apply to access-log fields path/query/ua/raw — not POST body."
+}

@@ -1,0 +1,44 @@
+{
+  "abstract": {
+    "id": "PT-BACKSLASH-001",
+    "type": "BACKSLASH",
+    "category": "PATH_TRAVERSAL",
+    "subcategory": "BACKSLASH",
+    "name": "Windows backslash traversal",
+    "description": "Detects ..\\ and %2e%2e%5c Windows-style path traversal.",
+    "normalization": [
+      "URL_DECODE",
+      "LOWERCASE"
+    ],
+    "conditions": [
+      "PARENT_DIRECTORY",
+      "WINDOWS_SEPARATOR"
+    ],
+    "suggested_target_field": "path",
+    "suggested_weight": 45,
+    "positive_examples": [
+      "..\\..\\windows\\win.ini",
+      "%2e%2e%5cwindows"
+    ],
+    "negative_examples": [
+      "C:\\Users\\Public"
+    ],
+    "source_datasets": [
+      "HttpParamsDataset",
+      "FuzzDB"
+    ]
+  },
+  "compiled": {
+    "code": "PT-BACKSLASH-001",
+    "name": "Windows backslash traversal",
+    "category": "PATH_TRAVERSAL",
+    "pattern": "(?i)\\.\\.(?:\\\\+|%5c+)|%2e%2e%5c",
+    "target_field": "path",
+    "weight": 45,
+    "enabled": true,
+    "description": "Detects ..\\ and %2e%2e%5c Windows-style path traversal.",
+    "source": "AI_MINED",
+    "generator_rule_id": "PT-BACKSLASH-001",
+    "rule_version": "1.0.0"
+  }
+}

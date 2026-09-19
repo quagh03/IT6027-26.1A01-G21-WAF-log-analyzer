@@ -1,0 +1,47 @@
+{
+  "abstract": {
+    "id": "SQLI-STACKED-001",
+    "type": "STACKED",
+    "category": "SQLI",
+    "subcategory": "STACKED",
+    "name": "Stacked SQL statement",
+    "description": "Detects stacked queries that start a second SQL statement after a semicolon.",
+    "normalization": [
+      "URL_DECODE",
+      "LOWERCASE",
+      "WHITESPACE_NORMALIZE"
+    ],
+    "conditions": [
+      "STATEMENT_SEPARATOR",
+      "SQL_KEYWORD"
+    ],
+    "suggested_target_field": "query",
+    "suggested_weight": 50,
+    "positive_examples": [
+      "1; drop table users",
+      "1; waitfor delay '0:0:5'"
+    ],
+    "negative_examples": [
+      "a;b",
+      "coord=1;2"
+    ],
+    "source_datasets": [
+      "modified-sql-dataset",
+      "HttpParamsDataset",
+      "FuzzDB"
+    ]
+  },
+  "compiled": {
+    "code": "SQLI-STACKED-001",
+    "name": "Stacked SQL statement",
+    "category": "SQLI",
+    "pattern": "(?i);(?:\\s+|%20|\\+)*(select|insert|update|delete|drop|alter|exec|waitfor)\\b",
+    "target_field": "query",
+    "weight": 50,
+    "enabled": true,
+    "description": "Detects stacked queries that start a second SQL statement after a semicolon.",
+    "source": "AI_MINED",
+    "generator_rule_id": "SQLI-STACKED-001",
+    "rule_version": "1.0.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "code": "SQLI-COMMENT-001",
+  "name": "SQL comment after quote",
+  "category": "SQLI",
+  "pattern": "(?i)(?:'|%27)(?:\\s+|%20|\\+)*(?:--|#|%23|/\\*)",
+  "target_field": "query",
+  "weight": 35,
+  "enabled": true,
+  "description": "Detects quote-then-comment evasion ('-- , '# , '/*) that short-circuits the rest of a SQL statement.",
+  "source": "AI_MINED",
+  "generator_rule_id": "SQLI-COMMENT-001",
+  "rule_version": "1.0.0"
+}

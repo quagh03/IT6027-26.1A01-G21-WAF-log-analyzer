@@ -1,0 +1,10 @@
+madrid
+user@example.com
+product-blue
+v1.2
+hello world
+Carrer Major 12
+homepage
+andromeda
+javascript
+select color

@@ -1,0 +1,13 @@
+{
+  "code": "SQLI-BOOLEAN-001",
+  "name": "Boolean tautology in query",
+  "category": "SQLI",
+  "pattern": "(?i)(\\bor\\b|\\band\\b)(?:\\s+|%20|\\+)+\\d+(?:\\s+|%20|\\+)*(?:=|%3d)(?:\\s+|%20|\\+)*\\d+",
+  "target_field": "query",
+  "weight": 40,
+  "enabled": true,
+  "description": "Detects classic boolean-based SQLi tautologies such as OR/AND n=n in the query string.",
+  "source": "AI_MINED",
+  "generator_rule_id": "SQLI-BOOLEAN-001",
+  "rule_version": "1.0.0"
+}

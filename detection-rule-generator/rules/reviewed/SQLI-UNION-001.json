@@ -1,0 +1,68 @@
+{
+  "abstract": {
+    "id": "SQLI-UNION-001",
+    "type": "UNION",
+    "category": "SQLI",
+    "subcategory": "UNION_BASED",
+    "name": "UNION SELECT injection",
+    "description": "Detects UNION SELECT used to append an attacker query in the query string.",
+    "normalization": [
+      "URL_DECODE",
+      "LOWERCASE",
+      "WHITESPACE_NORMALIZE"
+    ],
+    "conditions": [
+      "UNION_KEYWORD",
+      "SELECT_KEYWORD"
+    ],
+    "suggested_target_field": "query",
+    "suggested_weight": 55,
+    "positive_examples": [
+      "1 union select 1,version()",
+      "' union select null,null --"
+    ],
+    "negative_examples": [
+      "union square",
+      "select color"
+    ],
+    "source_datasets": [
+      "modified-sql-dataset",
+      "HttpParamsDataset",
+      "FuzzDB"
+    ]
+  },
+  "compiled": {
+    "code": "SQLI-UNION-001",
+    "name": "UNION SELECT injection",
+    "category": "SQLI",
+    "pattern": "(?i)\\bunion\\b(?:\\s+|%20|\\+)+(?:all(?:\\s+|%20|\\+)+)?\\bselect\\b",
+    "target_field": "query",
+    "weight": 55,
+    "enabled": true,
+    "description": "Detects UNION SELECT used to append an attacker query in the query string.",
+    "source": "AI_MINED",
+    "generator_rule_id": "SQLI-UNION-001",
+    "rule_version": "1.0.0"
+  },
+  "metrics": {
+    "code": "SQLI-UNION-001",
+    "category": "SQLI",
+    "target_field": "query",
+    "weight": 55,
+    "held_out_tp": 1146,
+    "held_out_n": 6598,
+    "adversarial_tp": 4609,
+    "adversarial_n": 32851,
+    "benign_fp": 0,
+    "benign_n": 12099,
+    "precision": 1.0,
+    "recall": 0.1737,
+    "f1": 0.296,
+    "fpr": 0.0,
+    "coverage": {
+      "known": 0.1737,
+      "adversarial": 0.1403
+    },
+    "pass_gate": true
+  }
+}

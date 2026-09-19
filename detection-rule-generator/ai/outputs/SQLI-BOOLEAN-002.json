@@ -1,0 +1,15 @@
+{
+  "id": "SQLI-BOOLEAN-002",
+  "type": "BOOLEAN_STRING",
+  "category": "SQLI",
+  "subcategory": "BOOLEAN_BASED",
+  "name": "String equality tautology",
+  "description": "Detects quoted string tautologies such as OR 'a'='a' in query values.",
+  "normalization": ["URL_DECODE", "LOWERCASE", "WHITESPACE_NORMALIZE"],
+  "conditions": ["SQL_BOOLEAN_OPERATOR", "QUOTED_STRING", "TAUTOLOGY"],
+  "suggested_target_field": "query",
+  "suggested_weight": 40,
+  "positive_examples": [") or ('a' = 'a", "or '1'='1", "' or 'x'='x"],
+  "negative_examples": ["o'reilly", "name=andrea"],
+  "source_datasets": ["modified-sql-dataset", "HttpParamsDataset", "FuzzDB"]
+}

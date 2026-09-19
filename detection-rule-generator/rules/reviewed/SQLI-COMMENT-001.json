@@ -1,0 +1,69 @@
+{
+  "abstract": {
+    "id": "SQLI-COMMENT-001",
+    "type": "COMMENT_EVASION",
+    "category": "SQLI",
+    "subcategory": "COMMENT_EVASION",
+    "name": "SQL comment after quote",
+    "description": "Detects quote-then-comment evasion ('-- , '# , '/*) that short-circuits the rest of a SQL statement.",
+    "normalization": [
+      "URL_DECODE",
+      "LOWERCASE",
+      "WHITESPACE_NORMALIZE"
+    ],
+    "conditions": [
+      "QUOTE",
+      "SQL_COMMENT"
+    ],
+    "suggested_target_field": "query",
+    "suggested_weight": 35,
+    "positive_examples": [
+      "admin'--",
+      "1' #",
+      "x'/*"
+    ],
+    "negative_examples": [
+      "it's fine",
+      "c# developer"
+    ],
+    "source_datasets": [
+      "modified-sql-dataset",
+      "HttpParamsDataset",
+      "FuzzDB"
+    ]
+  },
+  "compiled": {
+    "code": "SQLI-COMMENT-001",
+    "name": "SQL comment after quote",
+    "category": "SQLI",
+    "pattern": "(?i)(?:'|%27)(?:\\s+|%20|\\+)*(?:--|#|%23|/\\*)",
+    "target_field": "query",
+    "weight": 35,
+    "enabled": true,
+    "description": "Detects quote-then-comment evasion ('-- , '# , '/*) that short-circuits the rest of a SQL statement.",
+    "source": "AI_MINED",
+    "generator_rule_id": "SQLI-COMMENT-001",
+    "rule_version": "1.0.0"
+  },
+  "metrics": {
+    "code": "SQLI-COMMENT-001",
+    "category": "SQLI",
+    "target_field": "query",
+    "weight": 35,
+    "held_out_tp": 63,
+    "held_out_n": 6598,
+    "adversarial_tp": 2381,
+    "adversarial_n": 32851,
+    "benign_fp": 0,
+    "benign_n": 12099,
+    "precision": 1.0,
+    "recall": 0.0095,
+    "f1": 0.0189,
+    "fpr": 0.0,
+    "coverage": {
+      "known": 0.0095,
+      "adversarial": 0.0725
+    },
+    "pass_gate": true
+  }
+}

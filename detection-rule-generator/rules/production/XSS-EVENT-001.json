@@ -1,0 +1,13 @@
+{
+  "code": "XSS-EVENT-001",
+  "name": "HTML event-handler XSS",
+  "category": "XSS",
+  "pattern": "(?i)(?:<|%3c|%253c)[^>]{0,80}on(?:error|load|click|mouseover|focus|submit)\\s*(?:=|%3d)",
+  "target_field": "query",
+  "weight": 45,
+  "enabled": true,
+  "description": "Detects event-handler XSS such as <img ... onerror=...> in query values.",
+  "source": "AI_MINED",
+  "generator_rule_id": "XSS-EVENT-001",
+  "rule_version": "1.0.0"
+}

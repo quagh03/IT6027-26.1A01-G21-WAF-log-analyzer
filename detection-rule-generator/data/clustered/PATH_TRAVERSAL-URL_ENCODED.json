@@ -1,0 +1,36 @@
+{
+  "cluster_id": "PATH_TRAVERSAL-URL_ENCODED",
+  "category": "PATH_TRAVERSAL",
+  "subcategory": "URL_ENCODED",
+  "suggested_rule_id": "PT-ENCODED-001",
+  "suggested_target_field": "path",
+  "count": 22,
+  "positive_examples": [
+    "/\\\\\\%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c{FILE}",
+    "/..%c0%2f..%c0%2f..%c0%2f..%c0%2f..%c0%2f..%c0%2f{FILE}",
+    "/%c0%2e%c0%2e/%c0%2e%c0%2e/%c0%2e%c0%2e/%c0%2e%c0%2e/%c0%2e%c0%2e/%c0%2e%c0%2e/{FILE}",
+    "/\\\\\\%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c{FILE}",
+    "/..%c0%2f..%c0%2f..%c0%2f..%c0%2f{FILE}",
+    "/\\\\\\%2e%2e%5c{FILE}",
+    "/..%c0%5c..%c0%5c..%c0%5c..%c0%5c..%c0%5c{FILE}",
+    "/%c0%2e%c0%2e/{FILE}",
+    "/\\\\\\%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c%2e%2e%5c{FILE}",
+    "/\\\\\\%2e%2e%5c%2e%2e%5c%2e%2e%5c{FILE}",
+    "/..%c0%2f..%c0%2f{FILE}",
+    "/..%c0%2f..%c0%2f..%c0%2f..%c0%2f..%c0%2f..%c0%2f..%c0%2f..%c0%2f{FILE}"
+  ],
+  "negative_examples": [
+    "monino",
+    "6657407608418544",
+    "ademaro",
+    "ba46ea5",
+    "1erso",
+    "calle madagascar 130",
+    "0769789407660165",
+    "51egible"
+  ],
+  "source_datasets": [
+    "FuzzDB"
+  ],
+  "notes": "Use this card with ai/prompts/rule-generator.md. Emit one abstract rule JSON only. Do not paste the full corpus. Do not overfit a single payload. Rules must apply to access-log fields path/query/ua/raw — not POST body."
+}

@@ -1,0 +1,15 @@
+{
+  "id": "PT-ENCODED-001",
+  "type": "URL_ENCODED",
+  "category": "PATH_TRAVERSAL",
+  "subcategory": "URL_ENCODED",
+  "name": "URL-encoded path traversal",
+  "description": "Detects %2e%2e%2f / %2e%2e%5c traversal encodings on path or query.",
+  "normalization": ["URL_DECODE", "LOWERCASE"],
+  "conditions": ["PERCENT_ENCODE", "PARENT_DIRECTORY"],
+  "suggested_target_field": "path",
+  "suggested_weight": 50,
+  "positive_examples": ["%2e%2e%2fetc%2fpasswd", "..%2f..%2fetc/passwd"],
+  "negative_examples": ["file=notes%2etxt", "q=100%25"],
+  "source_datasets": ["HttpParamsDataset", "FuzzDB"]
+}

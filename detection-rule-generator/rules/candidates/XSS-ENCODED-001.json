@@ -1,0 +1,45 @@
+{
+  "abstract": {
+    "id": "XSS-ENCODED-001",
+    "type": "ENCODED",
+    "category": "XSS",
+    "subcategory": "ENCODED",
+    "name": "Percent-encoded XSS tag",
+    "description": "Detects percent-encoded opening tags (%3cscript, %3cimg) typical of query-string XSS.",
+    "normalization": [
+      "URL_DECODE",
+      "LOWERCASE"
+    ],
+    "conditions": [
+      "PERCENT_ENCODE",
+      "HTML_TAG_NAME"
+    ],
+    "suggested_target_field": "query",
+    "suggested_weight": 40,
+    "positive_examples": [
+      "%3cscript%3ealert(1)%3c/script%3e",
+      "%3cimg src=x onerror=alert(1)%3e"
+    ],
+    "negative_examples": [
+      "%3d",
+      "token=%2fhome"
+    ],
+    "source_datasets": [
+      "HttpParamsDataset",
+      "FuzzDB"
+    ]
+  },
+  "compiled": {
+    "code": "XSS-ENCODED-001",
+    "name": "Percent-encoded XSS tag",
+    "category": "XSS",
+    "pattern": "(?i)(?:%3c|%253c)\\s*(?:script|img|svg|iframe|body)\\b",
+    "target_field": "query",
+    "weight": 40,
+    "enabled": true,
+    "description": "Detects percent-encoded opening tags (%3cscript, %3cimg) typical of query-string XSS.",
+    "source": "AI_MINED",
+    "generator_rule_id": "XSS-ENCODED-001",
+    "rule_version": "1.0.0"
+  }
+}

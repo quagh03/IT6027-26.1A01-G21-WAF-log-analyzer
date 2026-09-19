@@ -5,7 +5,7 @@
 | Tuần | `02` / `5` |
 | Theme | Signature rules + DetectionHit + score 0–100 |
 | Phụ thuộc | Week 01 DoD (event chuẩn trong DB) |
-| Map outcome | **O3**, **O4**, **O5** (app threshold) |
+| Map outcome | **O3**, **O4**, **O5** (app threshold), **O10** (seed từ generator nếu sẵn) |
 | Trạng thái | `Not started` |
 
 ---
@@ -16,16 +16,16 @@ Event đã vào DB nhưng hệ thống chưa phân biệt request sạch và pay
 
 ## 2. Goal
 
-Mỗi `WebEvent` đi qua rule engine (SQLi, XSS, Path Traversal), ghi `DetectionHit`, tính risk score theo công thức §7.3, đọc lại được hits + score qua API.
+Mỗi `WebEvent` đi qua rule engine (SQLi, XSS, Path Traversal), ghi `DetectionHit`, tính risk score theo công thức §7.4, đọc lại được hits + score qua API.
 
 ## 3. Outcome
 
 | ID | Outcome tuần | Tiêu chí đo |
 |----|--------------|-------------|
 | W2-O1 | Detect 3 category | Tối thiểu SQLi, XSS, Path Traversal; mỗi hit có `rule_id` + evidence (O3) |
-| W2-O2 | Score per request | `risk_score` 0–100 = `base + freq_bonus(5m) + status_bonus` (O4) |
+| W2-O2 | Score per request | `risk_score` 0–100 = `base + freq_bonus(5m) + status_bonus` (O4, §7.4) |
 | W2-O3 | Scope theo app | Threshold lấy từ `Application.risk_threshold` (default 60); score vẫn tính dù chưa tạo alert (O5) |
-| W2-O4 | Seed rules | Flyway seed **8–15** rule enabled, 3 category |
+| W2-O4 | Seed rules | Flyway seed **8–15** rule enabled, 3 category; entity `DetectionRule` đủ provenance (`source`, `generator_rule_id`, `rule_version`) theo §7.3 |
 
 ## 4. Scope
 
@@ -33,9 +33,10 @@ Mỗi `WebEvent` đi qua rule engine (SQLi, XSS, Path Traversal), ghi `Detection
 
 - Load `DetectionRule` từ DB (`enabled=true`); evaluate regex theo `target_field` (`path`\|`query`\|`ua`\|`raw`)
 - Persist `DetectionHit` (event, rule, evidence, weight)
-- Scoring §7.3: `N = 5 phút`; `freq_bonus`; `status_bonus` cho 403/404/500 khi `base > 0`
+- Scoring §7.4: `N = 5 phút`; `freq_bonus`; `status_bonus` cho 403/404/500 khi `base > 0`
 - Ghi `WebEvent.risk_score`
-- Seed 8–15 rule: SQLI, XSS, PATH_TRAVERSAL
+- Seed 8–15 rule: SQLI, XSS, PATH_TRAVERSAL — ưu tiên từ `detection-rule-generator/rules/production/`; thiếu thì bổ sung `source=HAND`
+- Entity/enum đúng §7.3: `RuleCategory`, `TargetField`, `RuleSource`, cột provenance
 - `GET /api/events/{id}` trả hits + score
 - Unit/integration test: vài payload dương + vài path sạch
 - (Tuỳ chọn) `GET /api/rules` read-only — CRUD ghi/sửa để Week 3
@@ -44,7 +45,8 @@ Mỗi `WebEvent` đi qua rule engine (SQLi, XSS, Path Traversal), ghi `Detection
 
 - Tạo Alert / Incident / publish `security-alerts` / SSE / JWT
 - React SOC, Ollama
-- ML, ModSecurity, so sánh detector khác
+- ML online / LLM detect trên Kafka
+- Hoàn thiện full pipeline rule-generator (có thể seed tay tạm nếu production chưa đủ; O10 đóng dần)
 - Rule CRUD UI; chỉnh weight từ SOC
 - Runner đầy đủ ~30 probe (Week 4) — tuần này chỉ fixture test
 
@@ -52,10 +54,10 @@ Mỗi `WebEvent` đi qua rule engine (SQLi, XSS, Path Traversal), ghi `Detection
 
 | # | Việc | Ghi chú / artifact |
 |---|------|---------------------|
-| 1 | Entity + Flyway seed 8–15 rule | `DetectionRule` |
-| 2 | Rule evaluator (regex, field) | Module `rules` |
+| 1 | Enums + entity `DetectionRule` (+ provenance) + Flyway seed 8–15 | §7.3 |
+| 2 | Rule evaluator (regex, field) | Module `rules` / `RuleEngine` |
 | 3 | Persist hits | `DetectionHit` |
-| 4 | Scorer đúng công thức §7.3 | Module `scoring`; cửa sổ 5 phút theo `client_ip` |
+| 4 | Scorer đúng công thức §7.4 | Module `scoring`; cửa sổ 5 phút theo `client_ip` |
 | 5 | Gắn scorer vào pipeline sau normalize | Cùng process consumer |
 | 6 | API event detail + hits | `GET /api/events/{id}` |
 | 7 | Test dương/âm tối thiểu 3 category | Test Java, không phụ thuộc UI |
@@ -81,7 +83,8 @@ Tuần **Done** khi **tất cả** điều sau đúng:
 
 - [ ] Mọi AC trong §6 pass trên lab local (test tự động + 1 lần ingest thật)
 - [ ] Artifact §8 nằm đúng path
-- [ ] Công thức score ghi chú trong code/README khớp §7.3 (không “xấp xỉ”)
+- [ ] Công thức score ghi chú trong code/README khớp §7.4 (không “xấp xỉ”)
+- [ ] `DetectionRule` có `source` / `generator_rule_id` / `rule_version` (có thể null với rule `HAND`)
 - [ ] Không merge Alert/Incident/SSE/UI
 - [ ] Demo checkpoint §10 chạy được
 
@@ -89,7 +92,7 @@ Tuần **Done** khi **tất cả** điều sau đúng:
 
 | Artifact | Path gợi ý |
 |----------|------------|
-| Seed rules | Flyway `V*__seed_detection_rules.sql` |
+| Enums + entity + seed | `domain/enums`, `domain/entity/DetectionRule`, Flyway `V*__seed_detection_rules.sql` |
 | Rule engine + scorer | `backend/` modules `rules`, `scoring` |
 | Hits + score trên API | `GET /api/events/{id}` |
 | Test dương/âm | `backend/src/test/` |

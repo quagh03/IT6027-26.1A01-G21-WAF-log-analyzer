@@ -1,0 +1,13 @@
+{
+  "code": "XSS-ENCODED-001",
+  "name": "Percent-encoded XSS tag",
+  "category": "XSS",
+  "pattern": "(?i)(?:%3c|%253c)\\s*(?:script|img|svg|iframe|body)\\b",
+  "target_field": "query",
+  "weight": 40,
+  "enabled": true,
+  "description": "Detects percent-encoded opening tags (%3cscript, %3cimg) typical of query-string XSS.",
+  "source": "AI_MINED",
+  "generator_rule_id": "XSS-ENCODED-001",
+  "rule_version": "1.0.0"
+}

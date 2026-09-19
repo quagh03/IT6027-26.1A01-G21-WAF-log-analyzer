@@ -1,0 +1,67 @@
+{
+  "abstract": {
+    "id": "XSS-JSURI-001",
+    "type": "JS_URI",
+    "category": "XSS",
+    "subcategory": "JS_URI",
+    "name": "javascript: URI XSS",
+    "description": "Detects javascript: / vbscript: URIs used as XSS vectors in query or path.",
+    "normalization": [
+      "URL_DECODE",
+      "LOWERCASE",
+      "WHITESPACE_NORMALIZE"
+    ],
+    "conditions": [
+      "JS_PROTOCOL",
+      "URI_SEPARATOR"
+    ],
+    "suggested_target_field": "query",
+    "suggested_weight": 50,
+    "positive_examples": [
+      "javascript:alert(1)",
+      "JaVaScRiPt:alert(1)"
+    ],
+    "negative_examples": [
+      "javascript",
+      "script=app.js"
+    ],
+    "source_datasets": [
+      "HttpParamsDataset",
+      "FuzzDB"
+    ]
+  },
+  "compiled": {
+    "code": "XSS-JSURI-001",
+    "name": "javascript: URI XSS",
+    "category": "XSS",
+    "pattern": "(?i)(?:javascript|vbscript)(?:\\s+|%20|\\+)*(?::|%3a)",
+    "target_field": "query",
+    "weight": 50,
+    "enabled": true,
+    "description": "Detects javascript: / vbscript: URIs used as XSS vectors in query or path.",
+    "source": "AI_MINED",
+    "generator_rule_id": "XSS-JSURI-001",
+    "rule_version": "1.0.0"
+  },
+  "metrics": {
+    "code": "XSS-JSURI-001",
+    "category": "XSS",
+    "target_field": "query",
+    "weight": 50,
+    "held_out_tp": 66,
+    "held_out_n": 229,
+    "adversarial_tp": 323,
+    "adversarial_n": 1111,
+    "benign_fp": 0,
+    "benign_n": 12099,
+    "precision": 1.0,
+    "recall": 0.2882,
+    "f1": 0.4475,
+    "fpr": 0.0,
+    "coverage": {
+      "known": 0.2882,
+      "adversarial": 0.2907
+    },
+    "pass_gate": true
+  }
+}

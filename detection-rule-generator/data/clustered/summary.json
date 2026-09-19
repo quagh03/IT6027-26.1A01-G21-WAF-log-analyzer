@@ -1,0 +1,77 @@
+[
+  {
+    "category": "PATH_TRAVERSAL",
+    "subcategory": "BACKSLASH",
+    "count": 69
+  },
+  {
+    "category": "PATH_TRAVERSAL",
+    "subcategory": "DOTDOT_SLASH",
+    "count": 103
+  },
+  {
+    "category": "PATH_TRAVERSAL",
+    "subcategory": "OTHER",
+    "count": 216
+  },
+  {
+    "category": "PATH_TRAVERSAL",
+    "subcategory": "URL_ENCODED",
+    "count": 22
+  },
+  {
+    "category": "SQLI",
+    "subcategory": "BOOLEAN_TAUTOLOGY",
+    "count": 6338
+  },
+  {
+    "category": "SQLI",
+    "subcategory": "COMMENT_EVASION",
+    "count": 1349
+  },
+  {
+    "category": "SQLI",
+    "subcategory": "OTHER",
+    "count": 1352
+  },
+  {
+    "category": "SQLI",
+    "subcategory": "STACKED",
+    "count": 778
+  },
+  {
+    "category": "SQLI",
+    "subcategory": "TIME_BASED",
+    "count": 2901
+  },
+  {
+    "category": "SQLI",
+    "subcategory": "UNION",
+    "count": 2677
+  },
+  {
+    "category": "XSS",
+    "subcategory": "ENCODED",
+    "count": 19
+  },
+  {
+    "category": "XSS",
+    "subcategory": "EVENT_HANDLER",
+    "count": 39
+  },
+  {
+    "category": "XSS",
+    "subcategory": "JS_URI",
+    "count": 94
+  },
+  {
+    "category": "XSS",
+    "subcategory": "OTHER",
+    "count": 122
+  },
+  {
+    "category": "XSS",
+    "subcategory": "SCRIPT_TAG",
+    "count": 261
+  }
+]

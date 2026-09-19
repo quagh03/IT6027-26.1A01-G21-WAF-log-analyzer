@@ -1,0 +1,15 @@
+{
+  "id": "SQLI-COMMENT-001",
+  "type": "COMMENT_EVASION",
+  "category": "SQLI",
+  "subcategory": "COMMENT_EVASION",
+  "name": "SQL comment after quote",
+  "description": "Detects quote-then-comment evasion ('-- , '# , '/*) that short-circuits the rest of a SQL statement.",
+  "normalization": ["URL_DECODE", "LOWERCASE", "WHITESPACE_NORMALIZE"],
+  "conditions": ["QUOTE", "SQL_COMMENT"],
+  "suggested_target_field": "query",
+  "suggested_weight": 35,
+  "positive_examples": ["admin'--", "1' #", "x'/*"],
+  "negative_examples": ["it's fine", "c# developer"],
+  "source_datasets": ["modified-sql-dataset", "HttpParamsDataset", "FuzzDB"]
+}

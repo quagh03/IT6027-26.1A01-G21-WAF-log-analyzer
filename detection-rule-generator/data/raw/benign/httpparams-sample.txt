@@ -1,0 +1,11 @@
+# Sample HTTP parameter values (HttpParamsDataset `norm`). Full set is downloaded at runtime.
+madrid
+40184
+user@example.com
+product-blue
+v1.2
+order=asc
+hello world
+Carrer Major 12
+token
+homepage

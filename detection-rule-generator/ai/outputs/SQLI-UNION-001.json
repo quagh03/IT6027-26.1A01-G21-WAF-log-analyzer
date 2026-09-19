@@ -1,0 +1,15 @@
+{
+  "id": "SQLI-UNION-001",
+  "type": "UNION",
+  "category": "SQLI",
+  "subcategory": "UNION_BASED",
+  "name": "UNION SELECT injection",
+  "description": "Detects UNION SELECT used to append an attacker query in the query string.",
+  "normalization": ["URL_DECODE", "LOWERCASE", "WHITESPACE_NORMALIZE"],
+  "conditions": ["UNION_KEYWORD", "SELECT_KEYWORD"],
+  "suggested_target_field": "query",
+  "suggested_weight": 55,
+  "positive_examples": ["1 union select 1,version()", "' union select null,null --"],
+  "negative_examples": ["union square", "select color"],
+  "source_datasets": ["modified-sql-dataset", "HttpParamsDataset", "FuzzDB"]
+}

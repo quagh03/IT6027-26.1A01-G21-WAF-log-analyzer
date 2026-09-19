@@ -1,0 +1,67 @@
+{
+  "abstract": {
+    "id": "XSS-SCRIPT-001",
+    "type": "SCRIPT_TAG",
+    "category": "XSS",
+    "subcategory": "SCRIPT_TAG",
+    "name": "HTML script/iframe/svg tag",
+    "description": "Detects injected <script>, <iframe> or <svg> tags, including percent-encoded <.",
+    "normalization": [
+      "URL_DECODE",
+      "LOWERCASE",
+      "WHITESPACE_NORMALIZE"
+    ],
+    "conditions": [
+      "HTML_OPEN_TAG",
+      "SCRIPT_OR_SVG"
+    ],
+    "suggested_target_field": "query",
+    "suggested_weight": 55,
+    "positive_examples": [
+      "<script>alert(1)</script>",
+      "<svg/onload=alert(1)>"
+    ],
+    "negative_examples": [
+      "description",
+      "javascript book"
+    ],
+    "source_datasets": [
+      "HttpParamsDataset",
+      "FuzzDB"
+    ]
+  },
+  "compiled": {
+    "code": "XSS-SCRIPT-001",
+    "name": "HTML script/iframe/svg tag",
+    "category": "XSS",
+    "pattern": "(?i)(?:<|%3c|%253c)(?:\\s+|%20|\\+)*(script|iframe|svg)\\b",
+    "target_field": "query",
+    "weight": 55,
+    "enabled": true,
+    "description": "Detects injected <script>, <iframe> or <svg> tags, including percent-encoded <.",
+    "source": "AI_MINED",
+    "generator_rule_id": "XSS-SCRIPT-001",
+    "rule_version": "1.0.0"
+  },
+  "metrics": {
+    "code": "XSS-SCRIPT-001",
+    "category": "XSS",
+    "target_field": "query",
+    "weight": 55,
+    "held_out_tp": 71,
+    "held_out_n": 229,
+    "adversarial_tp": 354,
+    "adversarial_n": 1111,
+    "benign_fp": 0,
+    "benign_n": 12099,
+    "precision": 1.0,
+    "recall": 0.31,
+    "f1": 0.4733,
+    "fpr": 0.0,
+    "coverage": {
+      "known": 0.31,
+      "adversarial": 0.3186
+    },
+    "pass_gate": true
+  }
+}

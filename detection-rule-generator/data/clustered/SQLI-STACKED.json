@@ -1,0 +1,38 @@
+{
+  "cluster_id": "SQLI-STACKED",
+  "category": "SQLI",
+  "subcategory": "STACKED",
+  "suggested_rule_id": "SQLI-STACKED-001",
+  "suggested_target_field": "query",
+  "count": 778,
+  "positive_examples": [
+    "1')) as tley where 3539=3539;select (case when (3855=3855) then 3855 else 1/(select 0) end)--",
+    "1\";select count(*) from sysibm.systables as t1,sysibm.systables as t2,sysibm.systables as t3--",
+    "1\")));select count(*) from all_users t1,all_users t2,all_users t3,all_users t4,all_users t5 and (((\"khuw\" like \"khuw",
+    "1;select (case when (2768=8868) then 2768 else cast(1 as int)/(select 0 from dual) end) from dual--",
+    "1);select count(*) from domain.domains as t1,domain.columns as t2,domain.tables as t3--",
+    "1%\");select count(*) from sysibm.systables as t1,sysibm.systables as t2,sysibm.systables as t3--",
+    "1';select case when 7426=6635 then 1 else null end--",
+    "1\")) as riui where 2605=2605;select count(*) from domain.domains as t1,domain.columns as t2,domain.tables as t3--",
+    "1\" where 3434=3434;select count(*) from rdb$fields as t1,rdb$types as t2,rdb$collations as t3,rdb$functions as t4--",
+    "1\"));select count(*) from generate_series(1,5000000) and ((\"dros\"=\"dros",
+    "1%');select count(*) from all_users t1,all_users t2,all_users t3,all_users t4,all_users t5 and ('%'='",
+    "1');select like('abcdefg',upper(hex(randomblob(500000000/2)))) and ('afdy' like 'afdy"
+  ],
+  "negative_examples": [
+    "monino",
+    "6657407608418544",
+    "ademaro",
+    "ba46ea5",
+    "1erso",
+    "calle madagascar 130",
+    "0769789407660165",
+    "51egible"
+  ],
+  "source_datasets": [
+    "FuzzDB",
+    "HttpParamsDataset",
+    "modified-sql-dataset"
+  ],
+  "notes": "Use this card with ai/prompts/rule-generator.md. Emit one abstract rule JSON only. Do not paste the full corpus. Do not overfit a single payload. Rules must apply to access-log fields path/query/ua/raw — not POST body."
+}
