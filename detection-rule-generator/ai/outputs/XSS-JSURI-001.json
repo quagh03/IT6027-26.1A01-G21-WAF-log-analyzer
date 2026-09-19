@@ -1,0 +1,15 @@
+{
+  "id": "XSS-JSURI-001",
+  "type": "JS_URI",
+  "category": "XSS",
+  "subcategory": "JS_URI",
+  "name": "javascript: URI XSS",
+  "description": "Detects javascript: / vbscript: URIs used as XSS vectors in query or path.",
+  "normalization": ["URL_DECODE", "LOWERCASE", "WHITESPACE_NORMALIZE"],
+  "conditions": ["JS_PROTOCOL", "URI_SEPARATOR"],
+  "suggested_target_field": "query",
+  "suggested_weight": 50,
+  "positive_examples": ["javascript:alert(1)", "JaVaScRiPt:alert(1)"],
+  "negative_examples": ["javascript", "script=app.js"],
+  "source_datasets": ["HttpParamsDataset", "FuzzDB"]
+}

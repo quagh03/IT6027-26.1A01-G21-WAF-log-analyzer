@@ -1,0 +1,68 @@
+{
+  "abstract": {
+    "id": "SQLI-TIME-001",
+    "type": "TIME_BASED",
+    "category": "SQLI",
+    "subcategory": "TIME_BASED",
+    "name": "Time-based SQL delay",
+    "description": "Detects time-based SQLi primitives (SLEEP / pg_sleep / BENCHMARK / WAITFOR DELAY).",
+    "normalization": [
+      "URL_DECODE",
+      "LOWERCASE",
+      "WHITESPACE_NORMALIZE"
+    ],
+    "conditions": [
+      "TIME_FUNCTION",
+      "FUNCTION_CALL"
+    ],
+    "suggested_target_field": "query",
+    "suggested_weight": 60,
+    "positive_examples": [
+      "or pg_sleep(__TIME__) --",
+      "1); waitfor delay '0:0:5'--"
+    ],
+    "negative_examples": [
+      "sleep mode",
+      "benchmark score"
+    ],
+    "source_datasets": [
+      "modified-sql-dataset",
+      "HttpParamsDataset",
+      "FuzzDB"
+    ]
+  },
+  "compiled": {
+    "code": "SQLI-TIME-001",
+    "name": "Time-based SQL delay",
+    "category": "SQLI",
+    "pattern": "(?i)(?:(?:sleep|pg_sleep|benchmark)\\s*\\(|waitfor(?:\\s+|%20|\\+)+delay)",
+    "target_field": "query",
+    "weight": 60,
+    "enabled": true,
+    "description": "Detects time-based SQLi primitives (SLEEP / pg_sleep / BENCHMARK / WAITFOR DELAY).",
+    "source": "AI_MINED",
+    "generator_rule_id": "SQLI-TIME-001",
+    "rule_version": "1.0.0"
+  },
+  "metrics": {
+    "code": "SQLI-TIME-001",
+    "category": "SQLI",
+    "target_field": "query",
+    "weight": 60,
+    "held_out_tp": 1099,
+    "held_out_n": 6598,
+    "adversarial_tp": 4986,
+    "adversarial_n": 32851,
+    "benign_fp": 0,
+    "benign_n": 12099,
+    "precision": 1.0,
+    "recall": 0.1666,
+    "f1": 0.2856,
+    "fpr": 0.0,
+    "coverage": {
+      "known": 0.1666,
+      "adversarial": 0.1518
+    },
+    "pass_gate": true
+  }
+}

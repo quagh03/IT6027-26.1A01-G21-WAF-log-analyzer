@@ -1,0 +1,15 @@
+{
+  "id": "PT-BACKSLASH-001",
+  "type": "BACKSLASH",
+  "category": "PATH_TRAVERSAL",
+  "subcategory": "BACKSLASH",
+  "name": "Windows backslash traversal",
+  "description": "Detects ..\\ and %2e%2e%5c Windows-style path traversal.",
+  "normalization": ["URL_DECODE", "LOWERCASE"],
+  "conditions": ["PARENT_DIRECTORY", "WINDOWS_SEPARATOR"],
+  "suggested_target_field": "path",
+  "suggested_weight": 45,
+  "positive_examples": ["..\\..\\windows\\win.ini", "%2e%2e%5cwindows"],
+  "negative_examples": ["C:\\Users\\Public"],
+  "source_datasets": ["HttpParamsDataset", "FuzzDB"]
+}

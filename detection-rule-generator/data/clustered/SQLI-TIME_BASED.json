@@ -1,0 +1,38 @@
+{
+  "cluster_id": "SQLI-TIME_BASED",
+  "category": "SQLI",
+  "subcategory": "TIME_BASED",
+  "suggested_rule_id": "SQLI-TIME-001",
+  "suggested_target_field": "query",
+  "count": 2901,
+  "positive_examples": [
+    "1%\"   )    )    and 6537  =  dbms_pipe.receive_message  (  chr  (  76  )  ||chr  (  116  )  ||chr  (  117  )  ||chr  (  65  )  ,5  )   and    (    (   \"%\"  =  \"",
+    "1'  )   or sleep  (  5  )   and   (  'fizk'  =  'fizk",
+    "1' waitfor delay '0:0:5' and 'jree'  =  'jree",
+    "1'))) and elt(1210=1210,sleep(5)) and ((('acdu'='acdu",
+    "1\";begin dbms_lock.sleep(5); end",
+    "1\")) as xcyo where 2929=2929;select sleep(5)--",
+    "1 or 2633  =  dbms_pipe.receive_message  (  chr  (  112  )  ||chr  (  65  )  ||chr  (  65  )  ||chr  (  103  )  ,5  )",
+    "1\"  )   or 2633  =  dbms_pipe.receive_message  (  chr  (  112  )  ||chr  (  65  )  ||chr  (  65  )  ||chr  (  103  )  ,5  )   and   (  \"dwpa\"  =  \"dwpa",
+    "1\") or 4240=(select 4240 from pg_sleep(5))--",
+    "1\"   )    )     )   rlike sleep  (  5  )   and    (    (     (  \"qcqx\" like \"qcqx",
+    "1\" and   (  select * from   (  select  (  sleep  (  5   )    )     )  fzno  )   and \"gddl\" like \"gddl",
+    "1') where 4298=4298;(select * from (select(sleep(5)))acdk)#"
+  ],
+  "negative_examples": [
+    "monino",
+    "6657407608418544",
+    "ademaro",
+    "ba46ea5",
+    "1erso",
+    "calle madagascar 130",
+    "0769789407660165",
+    "51egible"
+  ],
+  "source_datasets": [
+    "FuzzDB",
+    "HttpParamsDataset",
+    "modified-sql-dataset"
+  ],
+  "notes": "Use this card with ai/prompts/rule-generator.md. Emit one abstract rule JSON only. Do not paste the full corpus. Do not overfit a single payload. Rules must apply to access-log fields path/query/ua/raw — not POST body."
+}

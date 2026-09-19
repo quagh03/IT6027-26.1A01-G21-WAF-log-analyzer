@@ -1,0 +1,15 @@
+{
+  "id": "SQLI-TIME-001",
+  "type": "TIME_BASED",
+  "category": "SQLI",
+  "subcategory": "TIME_BASED",
+  "name": "Time-based SQL delay",
+  "description": "Detects time-based SQLi primitives (SLEEP / pg_sleep / BENCHMARK / WAITFOR DELAY).",
+  "normalization": ["URL_DECODE", "LOWERCASE", "WHITESPACE_NORMALIZE"],
+  "conditions": ["TIME_FUNCTION", "FUNCTION_CALL"],
+  "suggested_target_field": "query",
+  "suggested_weight": 60,
+  "positive_examples": ["or pg_sleep(__TIME__) --", "1); waitfor delay '0:0:5'--"],
+  "negative_examples": ["sleep mode", "benchmark score"],
+  "source_datasets": ["modified-sql-dataset", "HttpParamsDataset", "FuzzDB"]
+}

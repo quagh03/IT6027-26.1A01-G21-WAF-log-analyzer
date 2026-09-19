@@ -1,0 +1,71 @@
+{
+  "abstract": {
+    "id": "SQLI-BOOLEAN-001",
+    "type": "BOOLEAN_TAUTOLOGY",
+    "category": "SQLI",
+    "subcategory": "BOOLEAN_BASED",
+    "name": "Boolean tautology in query",
+    "description": "Detects classic boolean-based SQLi tautologies such as OR/AND n=n in the query string.",
+    "normalization": [
+      "URL_DECODE",
+      "LOWERCASE",
+      "WHITESPACE_NORMALIZE"
+    ],
+    "conditions": [
+      "SQL_BOOLEAN_OPERATOR",
+      "COMPARISON_EXPRESSION",
+      "TAUTOLOGY"
+    ],
+    "suggested_target_field": "query",
+    "suggested_weight": 40,
+    "positive_examples": [
+      "or 1 = 1 --",
+      "admin' or 1 = 1#",
+      "' and 1=1 --"
+    ],
+    "negative_examples": [
+      "standard",
+      "andromeda",
+      "order=asc"
+    ],
+    "source_datasets": [
+      "modified-sql-dataset",
+      "HttpParamsDataset",
+      "FuzzDB"
+    ]
+  },
+  "compiled": {
+    "code": "SQLI-BOOLEAN-001",
+    "name": "Boolean tautology in query",
+    "category": "SQLI",
+    "pattern": "(?i)(\\bor\\b|\\band\\b)(?:\\s+|%20|\\+)+\\d+(?:\\s+|%20|\\+)*(?:=|%3d)(?:\\s+|%20|\\+)*\\d+",
+    "target_field": "query",
+    "weight": 40,
+    "enabled": true,
+    "description": "Detects classic boolean-based SQLi tautologies such as OR/AND n=n in the query string.",
+    "source": "AI_MINED",
+    "generator_rule_id": "SQLI-BOOLEAN-001",
+    "rule_version": "1.0.0"
+  },
+  "metrics": {
+    "code": "SQLI-BOOLEAN-001",
+    "category": "SQLI",
+    "target_field": "query",
+    "weight": 40,
+    "held_out_tp": 530,
+    "held_out_n": 6598,
+    "adversarial_tp": 2123,
+    "adversarial_n": 32851,
+    "benign_fp": 0,
+    "benign_n": 12099,
+    "precision": 1.0,
+    "recall": 0.0803,
+    "f1": 0.1487,
+    "fpr": 0.0,
+    "coverage": {
+      "known": 0.0803,
+      "adversarial": 0.0646
+    },
+    "pass_gate": true
+  }
+}

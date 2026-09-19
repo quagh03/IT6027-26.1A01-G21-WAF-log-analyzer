@@ -1,0 +1,13 @@
+{
+  "code": "PT-DOTDOT-001",
+  "name": "Dot-dot slash traversal",
+  "category": "PATH_TRAVERSAL",
+  "pattern": "(?i)(?:\\.\\./|\\.\\.\\\\|(?:\\.|%2e|%252e)(?:\\.|%2e|%252e)(?:/|%2f|%252f))",
+  "target_field": "path",
+  "weight": 45,
+  "enabled": true,
+  "description": "Detects ../ and encoded %2e%2e%2f path traversal sequences on path or query.",
+  "source": "AI_MINED",
+  "generator_rule_id": "PT-DOTDOT-001",
+  "rule_version": "1.0.0"
+}

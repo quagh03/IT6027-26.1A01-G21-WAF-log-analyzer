@@ -1,0 +1,38 @@
+{
+  "cluster_id": "SQLI-BOOLEAN_TAUTOLOGY",
+  "category": "SQLI",
+  "subcategory": "BOOLEAN_TAUTOLOGY",
+  "suggested_rule_id": "SQLI-BOOLEAN-001",
+  "suggested_target_field": "query",
+  "count": 6338,
+  "positive_examples": [
+    "1%' and 9660=(select count(*) from all_users t1,all_users t2,all_users t3,all_users t4,all_users t5)--",
+    "-1802' or 7931  =  5841--",
+    "-5928\"   )    )    or elt  (  1032  =  1032,3623  )   and    (    (   \"rggt\" like \"rggt",
+    "-1064' or make_set(6439=2937,2937) and 'qojd'='qojd",
+    "' or username like '%",
+    "1' and updatexml  (  3393,concat  (  0x2e,0x7171706a71,  (  select   (  elt  (  3393  =  3393,1   )    )     )  ,0x717a767a71  )  ,1161  )   and 'kird'  =  'kird",
+    "1' or (select 2*(if((select * from (select concat(0x7171706a71,(select (elt(8113=8113,1))),0x717a767a71,0x78))s), 8446744073709551610, 8446744073709551610))) and 'lxqz'='lxqz",
+    "') or ('a'='a",
+    "1 and elt  (  4249  =  4249,7259  )  # lwyo",
+    "1%\")) and make_set(8403=8403,8899) and ((\"%\"=\"",
+    "1%'  )   or 1022  =    (  select count  (  *  )   from all_users t1,all_users t2,all_users t3,all_users t4,all_users t5  )  --",
+    "1' or 8384  =  like  (  'abcdefg',upper  (  hex  (  randomblob  (  500000000/2   )    )      )    )"
+  ],
+  "negative_examples": [
+    "monino",
+    "6657407608418544",
+    "ademaro",
+    "ba46ea5",
+    "1erso",
+    "calle madagascar 130",
+    "0769789407660165",
+    "51egible"
+  ],
+  "source_datasets": [
+    "FuzzDB",
+    "HttpParamsDataset",
+    "modified-sql-dataset"
+  ],
+  "notes": "Use this card with ai/prompts/rule-generator.md. Emit one abstract rule JSON only. Do not paste the full corpus. Do not overfit a single payload. Rules must apply to access-log fields path/query/ua/raw — not POST body."
+}

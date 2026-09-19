@@ -1,0 +1,37 @@
+{
+  "cluster_id": "XSS-OTHER",
+  "category": "XSS",
+  "subcategory": "OTHER",
+  "suggested_rule_id": "XSS-OTHER-001",
+  "suggested_target_field": "query",
+  "count": 122,
+  "positive_examples": [
+    "alert(1)>",
+    "<div style=\"behaviour: url([link to code]);\">",
+    ">\"scriptdocument.cookie=true;/script",
+    "<? echo('<scr)';",
+    "<a href=\"http://server.com/\">crosssitescripting</a>",
+    "exp/*<a style='no\\\\crosssitescripting:nocrosssitescripting(\"*//*\");crosssitescripting:ex/*crosssitescripting*//*/*/pression(document.cookie=true)'>",
+    "-1<div style=\"binding: url([link to code]);\">",
+    "alert&lpar;1&rpar;",
+    "width:1px;filter:glow onfilterchange=alert(1)>x</div>",
+    "-1scriptdocument.cookie=true;/script",
+    ">\"<div datafld=\"b\" dataformatas=\"html\" datasrc=\"#x\"></div> ]]> [a][a]script>document.cookie=true;[a][a]/script>",
+    "<OBJECT TYPE=\"text/x-scriptlet\" DATA=\"http://xss.rocks/scriptlet.html\"></OBJECT>"
+  ],
+  "negative_examples": [
+    "monino",
+    "6657407608418544",
+    "ademaro",
+    "ba46ea5",
+    "1erso",
+    "calle madagascar 130",
+    "0769789407660165",
+    "51egible"
+  ],
+  "source_datasets": [
+    "FuzzDB",
+    "HttpParamsDataset"
+  ],
+  "notes": "Use this card with ai/prompts/rule-generator.md. Emit one abstract rule JSON only. Do not paste the full corpus. Do not overfit a single payload. Rules must apply to access-log fields path/query/ua/raw — not POST body."
+}

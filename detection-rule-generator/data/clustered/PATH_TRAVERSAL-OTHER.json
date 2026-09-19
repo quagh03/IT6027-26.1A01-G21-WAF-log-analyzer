@@ -1,0 +1,37 @@
+{
+  "cluster_id": "PATH_TRAVERSAL-OTHER",
+  "category": "PATH_TRAVERSAL",
+  "subcategory": "OTHER",
+  "suggested_rule_id": "PT-OTHER-001",
+  "suggested_target_field": "path",
+  "count": 216,
+  "positive_examples": [
+    "/%uff0e%uff0e%u2216%uff0e%uff0e%u2216{FILE}",
+    "/%uff0e%uff0e/%uff0e%uff0e/%uff0e%uff0e/%uff0e%uff0e/%uff0e%uff0e/%uff0e%uff0e/%uff0e%uff0e/{FILE}",
+    "/%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\{FILE}",
+    "/..%u2216..%u2216..%u2216..%u2216..%u2216..%u2216..%u2216{FILE}",
+    "..........web-infweb.xml",
+    "/0x2e0x2e\\0x2e0x2e\\{FILE}",
+    "/..%uEFC8..%uEFC8..%uEFC8..%uEFC8..%uEFC8..%uEFC8{FILE}",
+    "/0x2e0x2e0x2f0x2e0x2e0x2f0x2e0x2e0x2f0x2e0x2e0x2f0x2e0x2e0x2f0x2e0x2e0x2f0x2e0x2e0x2f0x2e0x2e0x2f{file}",
+    "/%uff0e%uff0e/%uff0e%uff0e/{FILE}",
+    "/%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\%c0%2e%c0%2e\\{FILE}",
+    "/./\\/././\\/././\\/././\\/././\\/./{FILE}",
+    "/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa....{file}"
+  ],
+  "negative_examples": [
+    "monino",
+    "6657407608418544",
+    "ademaro",
+    "ba46ea5",
+    "1erso",
+    "calle madagascar 130",
+    "0769789407660165",
+    "51egible"
+  ],
+  "source_datasets": [
+    "FuzzDB",
+    "HttpParamsDataset"
+  ],
+  "notes": "Use this card with ai/prompts/rule-generator.md. Emit one abstract rule JSON only. Do not paste the full corpus. Do not overfit a single payload. Rules must apply to access-log fields path/query/ua/raw — not POST body."
+}

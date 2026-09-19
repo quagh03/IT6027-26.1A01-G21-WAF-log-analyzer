@@ -1,0 +1,38 @@
+{
+  "cluster_id": "SQLI-UNION",
+  "category": "SQLI",
+  "subcategory": "UNION",
+  "suggested_rule_id": "SQLI-UNION-001",
+  "suggested_target_field": "query",
+  "count": 2677,
+  "positive_examples": [
+    "1 union all select null,null,null,null,null,null,null,null,null#",
+    "1') union all select null,null,null,null,null,null,null--",
+    "1'  )   union all select null--",
+    "1\"  )   or row  (  1045,7562  )  >  (  select count  (  *  )  ,concat  (  0x7171706a71,  (  select   (  elt  (  1045  =  1045,1   )    )     )  ,0x717a767a71,floor  (  rand  (  0  )  *2   )    )   x from   (  select 8488 union select 5584 union select 3051 union select 1210  )  a group by x  )   and   (  \"ponv\"  =  \"ponv",
+    "1\")) union all select null,null,null,null,null,null,null,null,null#",
+    "-5643'   )    )    union all select 1515,1515#",
+    "-6947')) as qqjp where 6700=6700 union all select 6700#",
+    "1' in boolean mode) union all select null,null,null,null,null--",
+    "-5124'+(select 'xpww' where 1752=1752 union all select 1752,1752,1752,1752,1752,1752,1752,1752,1752,1752--",
+    "-6405' union all select 8235,8235,8235,8235,8235#",
+    "1%'   )    )    or row  (  1045,7562  )  >  (  select count  (  *  )  ,concat  (  0x7171706a71,  (  select   (  elt  (  1045  =  1045,1   )    )     )  ,0x717a767a71,floor  (  rand  (  0  )  *2   )    )   x from   (  select 8488 union select 5584 union select 3051 union select 1210  )  a group by x  )   and    (    (   '%'  =  '",
+    "1 and row(6237,7469)>(select count(*),concat(0x7171706a71,(select (elt(6237=6237,1))),0x717a767a71,floor(rand(0)*2))x from (select 5192 union select 3785 union select 3931 union select 7158)a group by x)# aetd"
+  ],
+  "negative_examples": [
+    "monino",
+    "6657407608418544",
+    "ademaro",
+    "ba46ea5",
+    "1erso",
+    "calle madagascar 130",
+    "0769789407660165",
+    "51egible"
+  ],
+  "source_datasets": [
+    "FuzzDB",
+    "HttpParamsDataset",
+    "modified-sql-dataset"
+  ],
+  "notes": "Use this card with ai/prompts/rule-generator.md. Emit one abstract rule JSON only. Do not paste the full corpus. Do not overfit a single payload. Rules must apply to access-log fields path/query/ua/raw — not POST body."
+}

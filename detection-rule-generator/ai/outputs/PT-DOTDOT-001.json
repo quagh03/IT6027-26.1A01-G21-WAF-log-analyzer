@@ -1,0 +1,15 @@
+{
+  "id": "PT-DOTDOT-001",
+  "type": "DOTDOT_SLASH",
+  "category": "PATH_TRAVERSAL",
+  "subcategory": "DOTDOT_SLASH",
+  "name": "Dot-dot slash traversal",
+  "description": "Detects ../ and encoded %2e%2e%2f path traversal sequences on path or query.",
+  "normalization": ["URL_DECODE", "LOWERCASE"],
+  "conditions": ["PARENT_DIRECTORY", "PATH_SEPARATOR"],
+  "suggested_target_field": "path",
+  "suggested_weight": 45,
+  "positive_examples": ["../../etc/passwd", "....//....//etc/passwd"],
+  "negative_examples": ["about/us", "v1.2/release"],
+  "source_datasets": ["HttpParamsDataset", "FuzzDB"]
+}

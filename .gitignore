@@ -35,3 +35,15 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Python (detection-rule-generator) ###
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+detection-rule-generator/data/raw/_upstream/
+detection-rule-generator/data/raw/**/fuzzdb/
+detection-rule-generator/data/raw/ingested.csv
+detection-rule-generator/data/normalized/*.csv
+detection-rule-generator/data/evaluation/*.csv
+detection-rule-generator/data/clustered/*.csv

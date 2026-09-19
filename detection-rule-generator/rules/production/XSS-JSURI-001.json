@@ -1,0 +1,13 @@
+{
+  "code": "XSS-JSURI-001",
+  "name": "javascript: URI XSS",
+  "category": "XSS",
+  "pattern": "(?i)(?:javascript|vbscript)(?:\\s+|%20|\\+)*(?::|%3a)",
+  "target_field": "query",
+  "weight": 50,
+  "enabled": true,
+  "description": "Detects javascript: / vbscript: URIs used as XSS vectors in query or path.",
+  "source": "AI_MINED",
+  "generator_rule_id": "XSS-JSURI-001",
+  "rule_version": "1.0.0"
+}

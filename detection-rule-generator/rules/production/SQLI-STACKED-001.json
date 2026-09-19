@@ -1,0 +1,13 @@
+{
+  "code": "SQLI-STACKED-001",
+  "name": "Stacked SQL statement",
+  "category": "SQLI",
+  "pattern": "(?i);(?:\\s+|%20|\\+)*(select|insert|update|delete|drop|alter|exec|waitfor)\\b",
+  "target_field": "query",
+  "weight": 50,
+  "enabled": true,
+  "description": "Detects stacked queries that start a second SQL statement after a semicolon.",
+  "source": "AI_MINED",
+  "generator_rule_id": "SQLI-STACKED-001",
+  "rule_version": "1.0.0"
+}

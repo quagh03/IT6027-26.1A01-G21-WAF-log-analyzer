@@ -1,0 +1,344 @@
+{
+  "gates": {
+    "fpr_max": 0.02,
+    "precision_min": 0.8,
+    "min_held_out_hits": 1,
+    "benign_source": "HttpParamsDataset"
+  },
+  "per_rule": [
+    {
+      "code": "PT-BACKSLASH-001",
+      "category": "PATH_TRAVERSAL",
+      "target_field": "path",
+      "weight": 45,
+      "held_out_tp": 34,
+      "held_out_n": 175,
+      "adversarial_tp": 184,
+      "adversarial_n": 808,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.1943,
+      "f1": 0.3254,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.1943,
+        "adversarial": 0.2277
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "PT-DOTDOT-001",
+      "category": "PATH_TRAVERSAL",
+      "target_field": "path",
+      "weight": 45,
+      "held_out_tp": 84,
+      "held_out_n": 175,
+      "adversarial_tp": 414,
+      "adversarial_n": 808,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.48,
+      "f1": 0.6486,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.48,
+        "adversarial": 0.5124
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "PT-DOUBLE-001",
+      "category": "PATH_TRAVERSAL",
+      "target_field": "path",
+      "weight": 55,
+      "held_out_tp": 0,
+      "held_out_n": 175,
+      "adversarial_tp": 2,
+      "adversarial_n": 808,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.0,
+      "f1": 0.0049,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.0,
+        "adversarial": 0.0025
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "PT-ENCODED-001",
+      "category": "PATH_TRAVERSAL",
+      "target_field": "path",
+      "weight": 50,
+      "held_out_tp": 2,
+      "held_out_n": 175,
+      "adversarial_tp": 165,
+      "adversarial_n": 808,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.0114,
+      "f1": 0.0226,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.0114,
+        "adversarial": 0.2042
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "SQLI-BOOLEAN-001",
+      "category": "SQLI",
+      "target_field": "query",
+      "weight": 40,
+      "held_out_tp": 530,
+      "held_out_n": 6598,
+      "adversarial_tp": 2123,
+      "adversarial_n": 32851,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.0803,
+      "f1": 0.1487,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.0803,
+        "adversarial": 0.0646
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "SQLI-BOOLEAN-002",
+      "category": "SQLI",
+      "target_field": "query",
+      "weight": 40,
+      "held_out_tp": 256,
+      "held_out_n": 6598,
+      "adversarial_tp": 1056,
+      "adversarial_n": 32851,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.0388,
+      "f1": 0.0747,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.0388,
+        "adversarial": 0.0321
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "SQLI-COMMENT-001",
+      "category": "SQLI",
+      "target_field": "query",
+      "weight": 35,
+      "held_out_tp": 63,
+      "held_out_n": 6598,
+      "adversarial_tp": 2381,
+      "adversarial_n": 32851,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.0095,
+      "f1": 0.0189,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.0095,
+        "adversarial": 0.0725
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "SQLI-STACKED-001",
+      "category": "SQLI",
+      "target_field": "query",
+      "weight": 50,
+      "held_out_tp": 509,
+      "held_out_n": 6598,
+      "adversarial_tp": 2514,
+      "adversarial_n": 32851,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.0771,
+      "f1": 0.1432,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.0771,
+        "adversarial": 0.0765
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "SQLI-TIME-001",
+      "category": "SQLI",
+      "target_field": "query",
+      "weight": 60,
+      "held_out_tp": 1099,
+      "held_out_n": 6598,
+      "adversarial_tp": 4986,
+      "adversarial_n": 32851,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.1666,
+      "f1": 0.2856,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.1666,
+        "adversarial": 0.1518
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "SQLI-UNION-001",
+      "category": "SQLI",
+      "target_field": "query",
+      "weight": 55,
+      "held_out_tp": 1146,
+      "held_out_n": 6598,
+      "adversarial_tp": 4609,
+      "adversarial_n": 32851,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.1737,
+      "f1": 0.296,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.1737,
+        "adversarial": 0.1403
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "XSS-ENCODED-001",
+      "category": "XSS",
+      "target_field": "query",
+      "weight": 40,
+      "held_out_tp": 99,
+      "held_out_n": 229,
+      "adversarial_tp": 533,
+      "adversarial_n": 1111,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.4323,
+      "f1": 0.6037,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.4323,
+        "adversarial": 0.4797
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "XSS-EVENT-001",
+      "category": "XSS",
+      "target_field": "query",
+      "weight": 45,
+      "held_out_tp": 29,
+      "held_out_n": 229,
+      "adversarial_tp": 139,
+      "adversarial_n": 1111,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.1266,
+      "f1": 0.2248,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.1266,
+        "adversarial": 0.1251
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "XSS-JSURI-001",
+      "category": "XSS",
+      "target_field": "query",
+      "weight": 50,
+      "held_out_tp": 66,
+      "held_out_n": 229,
+      "adversarial_tp": 323,
+      "adversarial_n": 1111,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.2882,
+      "f1": 0.4475,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.2882,
+        "adversarial": 0.2907
+      },
+      "pass_gate": true
+    },
+    {
+      "code": "XSS-SCRIPT-001",
+      "category": "XSS",
+      "target_field": "query",
+      "weight": 55,
+      "held_out_tp": 71,
+      "held_out_n": 229,
+      "adversarial_tp": 354,
+      "adversarial_n": 1111,
+      "benign_fp": 0,
+      "benign_n": 12099,
+      "precision": 1.0,
+      "recall": 0.31,
+      "f1": 0.4733,
+      "fpr": 0.0,
+      "coverage": {
+        "known": 0.31,
+        "adversarial": 0.3186
+      },
+      "pass_gate": true
+    }
+  ],
+  "ruleset_by_category": {
+    "PATH_TRAVERSAL": {
+      "held_out_coverage": 0.48,
+      "adversarial_coverage": 0.5136,
+      "benign_fpr": 0.0,
+      "held_out_n": 175,
+      "adversarial_n": 808
+    },
+    "SQLI": {
+      "held_out_coverage": 0.5052,
+      "adversarial_coverage": 0.4958,
+      "benign_fpr": 0.0,
+      "held_out_n": 6598,
+      "adversarial_n": 32851
+    },
+    "XSS": {
+      "held_out_coverage": 0.6812,
+      "adversarial_coverage": 0.6985,
+      "benign_fpr": 0.0,
+      "held_out_n": 229,
+      "adversarial_n": 1111
+    }
+  },
+  "passing_codes": [
+    "PT-BACKSLASH-001",
+    "PT-DOTDOT-001",
+    "PT-DOUBLE-001",
+    "PT-ENCODED-001",
+    "SQLI-BOOLEAN-001",
+    "SQLI-BOOLEAN-002",
+    "SQLI-COMMENT-001",
+    "SQLI-STACKED-001",
+    "SQLI-TIME-001",
+    "SQLI-UNION-001",
+    "XSS-ENCODED-001",
+    "XSS-EVENT-001",
+    "XSS-JSURI-001",
+    "XSS-SCRIPT-001"
+  ],
+  "passing_count": 14
+}

@@ -1,0 +1,46 @@
+{
+  "abstract": {
+    "id": "XSS-EVENT-001",
+    "type": "EVENT_HANDLER",
+    "category": "XSS",
+    "subcategory": "EVENT_HANDLER",
+    "name": "HTML event-handler XSS",
+    "description": "Detects event-handler XSS such as <img ... onerror=...> in query values.",
+    "normalization": [
+      "URL_DECODE",
+      "LOWERCASE",
+      "WHITESPACE_NORMALIZE"
+    ],
+    "conditions": [
+      "HTML_OPEN_TAG",
+      "EVENT_HANDLER_ATTR"
+    ],
+    "suggested_target_field": "query",
+    "suggested_weight": 45,
+    "positive_examples": [
+      "<img src=x onerror=alert(1)>",
+      "<body onload=alert(1)>"
+    ],
+    "negative_examples": [
+      "onclick-counter",
+      "loading"
+    ],
+    "source_datasets": [
+      "HttpParamsDataset",
+      "FuzzDB"
+    ]
+  },
+  "compiled": {
+    "code": "XSS-EVENT-001",
+    "name": "HTML event-handler XSS",
+    "category": "XSS",
+    "pattern": "(?i)(?:<|%3c|%253c)[^>]{0,80}on(?:error|load|click|mouseover|focus|submit)\\s*(?:=|%3d)",
+    "target_field": "query",
+    "weight": 45,
+    "enabled": true,
+    "description": "Detects event-handler XSS such as <img ... onerror=...> in query values.",
+    "source": "AI_MINED",
+    "generator_rule_id": "XSS-EVENT-001",
+    "rule_version": "1.0.0"
+  }
+}

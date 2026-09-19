@@ -1,0 +1,13 @@
+{
+  "code": "SQLI-TIME-001",
+  "name": "Time-based SQL delay",
+  "category": "SQLI",
+  "pattern": "(?i)(?:(?:sleep|pg_sleep|benchmark)\\s*\\(|waitfor(?:\\s+|%20|\\+)+delay)",
+  "target_field": "query",
+  "weight": 60,
+  "enabled": true,
+  "description": "Detects time-based SQLi primitives (SLEEP / pg_sleep / BENCHMARK / WAITFOR DELAY).",
+  "source": "AI_MINED",
+  "generator_rule_id": "SQLI-TIME-001",
+  "rule_version": "1.0.0"
+}

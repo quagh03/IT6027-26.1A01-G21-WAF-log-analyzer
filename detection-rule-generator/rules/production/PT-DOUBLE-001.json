@@ -1,0 +1,13 @@
+{
+  "code": "PT-DOUBLE-001",
+  "name": "Double-encoded path traversal",
+  "category": "PATH_TRAVERSAL",
+  "pattern": "(?i)%252e%252e(?:%252f|%252e|%255c|%2f)",
+  "target_field": "path",
+  "weight": 55,
+  "enabled": true,
+  "description": "Detects double-encoded traversal such as %252e%252e%252f.",
+  "source": "AI_MINED",
+  "generator_rule_id": "PT-DOUBLE-001",
+  "rule_version": "1.0.0"
+}

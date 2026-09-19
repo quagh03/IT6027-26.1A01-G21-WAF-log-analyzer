@@ -1,0 +1,15 @@
+{
+  "id": "SQLI-BOOLEAN-001",
+  "type": "BOOLEAN_TAUTOLOGY",
+  "category": "SQLI",
+  "subcategory": "BOOLEAN_BASED",
+  "name": "Boolean tautology in query",
+  "description": "Detects classic boolean-based SQLi tautologies such as OR/AND n=n in the query string.",
+  "normalization": ["URL_DECODE", "LOWERCASE", "WHITESPACE_NORMALIZE"],
+  "conditions": ["SQL_BOOLEAN_OPERATOR", "COMPARISON_EXPRESSION", "TAUTOLOGY"],
+  "suggested_target_field": "query",
+  "suggested_weight": 40,
+  "positive_examples": ["or 1 = 1 --", "admin' or 1 = 1#", "' and 1=1 --"],
+  "negative_examples": ["standard", "andromeda", "order=asc"],
+  "source_datasets": ["modified-sql-dataset", "HttpParamsDataset", "FuzzDB"]
+}

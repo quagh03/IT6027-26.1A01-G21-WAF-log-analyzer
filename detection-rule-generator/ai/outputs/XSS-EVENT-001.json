@@ -1,0 +1,15 @@
+{
+  "id": "XSS-EVENT-001",
+  "type": "EVENT_HANDLER",
+  "category": "XSS",
+  "subcategory": "EVENT_HANDLER",
+  "name": "HTML event-handler XSS",
+  "description": "Detects event-handler XSS such as <img ... onerror=...> in query values.",
+  "normalization": ["URL_DECODE", "LOWERCASE", "WHITESPACE_NORMALIZE"],
+  "conditions": ["HTML_OPEN_TAG", "EVENT_HANDLER_ATTR"],
+  "suggested_target_field": "query",
+  "suggested_weight": 45,
+  "positive_examples": ["<img src=x onerror=alert(1)>", "<body onload=alert(1)>"],
+  "negative_examples": ["onclick-counter", "loading"],
+  "source_datasets": ["HttpParamsDataset", "FuzzDB"]
+}
