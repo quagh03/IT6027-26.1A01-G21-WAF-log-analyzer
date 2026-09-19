@@ -5,8 +5,8 @@
 
 | Trường | Giá trị |
 |--------|---------|
-| Phiên bản | `1.4` |
-| Ngày | 2026-09-12 |
+| Phiên bản | `1.6` |
+| Ngày | 2026-09-18 |
 | Trạng thái | **Approved for implementation** (đã chốt quyết định) |
 | Tác giả | (điền tên sinh viên) |
 
@@ -26,9 +26,11 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 2. Đẩy log realtime qua Kafka
 3. Spring backend chuẩn hoá → phát hiện pattern tấn công bằng rule engine tự viết → chấm điểm bất thường
 4. Scope theo domain/ứng dụng, cảnh báo → **tạo Incident**, dashboard gần realtime (SSE)
-5. LLM **bắt buộc trong deliverable**, phạm vi hẹp: **giải thích Incident** (không thay rule engine), gọi **bất đồng bộ** sau khi Incident được tạo
+5. LLM **bắt buộc trong deliverable**, **hai vai trò tách biệt**:
+   - **Offline (rule mining):** AI hỗ trợ sinh/review detection rule từ attack corpora trong `detection-rule-generator/` — **không** nằm trên critical path runtime
+   - **Online (incident explain):** Ollama giải thích Incident **bất đồng bộ** sau khi Incident được tạo — **không** thay rule engine
 
-Đóng góp chính của BTL nằm ở **tầng security backend** (detection, scoring, alert, incident, dashboard, LLM explain async, báo cáo chính sách). Tầng workload (UI app + Nginx + Filebeat) **reuse open-source / tự compose**.
+Đóng góp chính của BTL nằm ở **tầng security backend** (detection, scoring, alert, incident, dashboard, LLM explain async, báo cáo chính sách) và **lab offline rule mining** (dataset → AI → rule → eval → seed runtime). Tầng workload (UI app + Nginx + Filebeat) **reuse open-source / tự compose**.
 
 ### 1.3 Vai trò các tầng
 
@@ -38,7 +40,8 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 | Edge logging | Nginx reverse proxy ghi access log JSON | Tự config trong Compose |
 | Shipper | Filebeat tail log → Kafka | Adapt mẫu SIEM-in-a-box |
 | Bus | Apache Kafka (KRaft single-node) | Infra Docker |
-| **Security backend** | Ingest, normalize, detect, score, alert, incident, API, LLM explain async | **Tự viết (Spring Boot 3)** |
+| **Rule mining (offline)** | Dataset → normalize/cluster → AI gen rule → eval → export `DetectionRule` | **Tự viết (`detection-rule-generator/`)** |
+| **Security backend** | Ingest, normalize, detect (load compiled rules), score, alert, incident, API, LLM explain async | **Tự viết (Spring Boot 3)** |
 | **SOC UI** | Dashboard, incident triage | **Tự viết (React + Vite)** |
 
 ---
@@ -48,6 +51,7 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 ### 2.1 Mục tiêu học thuật / kỹ thuật
 
 - Xây pipeline giám sát web attack từ access log theo hướng detection engineering
+- Xây lab offline **AI-assisted rule mining** (coverage cao, FP thấp) rồi đưa rule đã evaluate vào runtime
 - Áp dụng kiến thức security (OWASP, logging, FP/FN, triage) vào báo cáo môn quản trị
 - Map hệ thống vào khung chính sách: **NIST CSF là khung chính**, ISO 27001 là phụ lục/đối chiếu
 - Demo được end-to-end trên lab local (Docker Compose)
@@ -58,14 +62,15 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 |---|---------|-------------------|
 | O1 | Ingest realtime | Log Nginx xuất hiện trên Kafka topic `raw-web-logs` trong **&lt; 5 giây** sau request |
 | O2 | Normalize | Mọi event map vào schema `WebEvent` thống nhất (method, path, query, status, UA, IP, time, host, app_id) — normalize **in-process** trong Spring |
-| O3 | Detect | Rule engine phát hiện tối thiểu **SQLi, XSS, Path Traversal** với `rule_id` + evidence |
+| O3 | Detect | Rule engine phát hiện tối thiểu **SQLi, XSS, Path Traversal** với `rule_id` + evidence; rule production lấy từ `detection-rule-generator` (đã eval + human review) |
 | O4 | Score | Mỗi **request** có risk score 0–100; alert khi `score >= 60` (threshold theo app, mặc định 60) |
 | O5 | Scope | Lọc/cảnh báo theo `app_id` / `host` trên **Juice Shop** (MVP). Multi-app DVWA = phase 2 |
 | O6 | Dashboard | Timeline, top attack type, top IP, top path; realtime qua **SSE** (alert + incident) |
 | O7 | Demo dataset | Compose + **Attack Scenario Runner** (`datasets/probes`) + traffic browse sạch; reproduce được |
-| O8 | Đánh giá | Bảng FP/FN thô trên bộ test tự định nghĩa (~50 clean + ~30 probe) |
+| O8 | Đánh giá | **Hai tầng:** (A) corpus metrics từ rule-generator (precision/recall/FPR/coverage trên held-out); (B) FP/FN thô trên Juice probes (~50 clean + ~30 probe) |
 | O9 | Incident + LLM | **Promote có phân cấp** (immediate + aggregate); LLM explain **async** khi Incident được tạo (profile `llm`); UI ghi rõ AI-assisted |
-| O10 | Báo cáo môn học | Chương kỹ thuật + chương chính sách (NIST CSF chính) + hạn chế hệ thống |
+| O10 | Rule mining | Pipeline offline trong `detection-rule-generator/` chạy được: raw → cluster → AI candidate rules → eval → `rules/production/` export khớp schema `DetectionRule` |
+| O11 | Báo cáo môn học | Chương kỹ thuật + chương chính sách (NIST CSF chính) + hạn chế hệ thống |
 
 ### 2.3 Demo flow chuẩn (8–10 phút)
 
@@ -84,20 +89,22 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 
 - Parse **Nginx JSON access log** only
 - Canonical event model + persistence (**PostgreSQL + Flyway**)
-- Rule engine tự viết (regex/signature + weight), seed **8–15 rule** (categories: SQLI, XSS, PATH_TRAVERSAL)
+- Rule engine tự viết (regex/signature + weight); **8–15 production rule** (categories: SQLI, XSS, PATH_TRAVERSAL) lấy từ output đã evaluate của `detection-rule-generator` + **human review**, seed qua Flyway (có thể bổ sung tay nếu thiếu category)
+- **AI-assisted rule mining (offline)** trong `detection-rule-generator/`: corpora → normalize/dedupe/cluster → AI gen abstract rule → compiler → regex `DetectionRule` → eval (held-out + benign + adversarial)
 - Risk scoring: rule weight + frequency window **N = 5 phút**
 - Alert lifecycle: vẫn **1 alert gắn 1 event**; alert có thể **chưa** thuộc incident (`incident_id` nullable)
-- **Incident (phân cấp + tổng hợp):** không còn 1 alert = 1 incident. Promote theo policy §7.4; triage trên Incident (`OPEN` / `ACK` / `CLOSED`); quan hệ **1 incident : N alerts**
+- **Incident (phân cấp + tổng hợp):** không còn 1 alert = 1 incident. Promote theo policy §7.5; triage trên Incident (`OPEN` / `ACK` / `CLOSED`); quan hệ **1 incident : N alerts**
 - Application scoping theo `host` → `app_id` (có thể dùng thêm host giả lập để demo multi-scope trên 1 app)
-- Rule seed qua Flyway; **admin rule CRUD API** nằm trong MVP (bật/tắt, sửa weight)
+- Rule seed qua Flyway; **admin rule CRUD API** nằm trong MVP (bật/tắt, sửa weight); tuỳ chọn import JSON từ `detection-rule-generator/rules/production/`
 - REST API + **React** SOC dashboard
 - Realtime: **SSE** (`GET /api/stream/alerts`, `GET /api/stream/incidents`)
 - Auth SOC: **JWT** (1 role `admin` trong MVP)
 - Kafka topics: **`raw-web-logs`** + **`security-alerts`**
-- LLM: **Ollama local**, use case duy nhất MVP = **incident explain**; gọi **bất đồng bộ** sau khi tạo Incident (không block alert/SSE); có API retry thủ công
-- Docker Compose chạy toàn bộ lab (không bắt buộc Kafka UI / không bắt buộc Ollama luôn bật nếu máy yếu — có profile)
+- LLM **online**: **Ollama local**, use case runtime = **incident explain**; gọi **bất đồng bộ** sau khi tạo Incident (không block alert/SSE); có API retry thủ công
+- LLM **offline**: dùng trong rule-generator (Cursor/local LLM) để gen/review/optimize rule — **không** gọi trong Kafka consumer / detect path
+- Docker Compose chạy toàn bộ lab (không bắt buộc Kafka UI / không bắt buộc Ollama luôn bật nếu máy yếu — có profile). Rule-generator **không** bắt buộc chạy trong Compose (tooling offline)
 - **Attack Scenario Runner** trong `datasets/probes` (scenarios có nhãn + script chạy tự động qua Nginx)
-- Tài liệu: SOLUTION_DESIGN + README + báo cáo PDF + slide
+- Tài liệu: SOLUTION_DESIGN + `docs/rule-creation.md` + README + báo cáo PDF + slide
 
 ### 3.2 Out-of-scope / trì hoãn — đã khoá
 
@@ -107,17 +114,18 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 | So sánh ModSecurity DetectionOnly | **Không làm** (tránh phình) |
 | Parse Apache combined | **Không làm** trong BTL |
 | Full packet capture / network IDS | Out |
-| Unsupervised ML / zero-day detector | Out |
+| Unsupervised ML / zero-day detector / LLM làm detector online | Out — AI chỉ **sinh rule offline**; runtime vẫn signature/regex |
 | Multi-tenant SaaS | Out |
 | Deep inspection response body / TLS MITM | Out |
 | DVWA app #2 | **Phase 2** (sau MVP) |
 | Topic `normalized-web-events` | **Không dùng** — normalize in-process |
 | Session/IP correlation phức tạp (device fingerprint, multi-hop) | Ngoài MVP |
-| Incident correlation vượt ngoài key `(app_id, client_ip)` + cửa sổ thời gian | Ngoài MVP (giữ rule §7.4) |
+| Incident correlation vượt ngoài key `(app_id, client_ip)` + cửa sổ thời gian | Ngoài MVP (giữ rule §7.5) |
 | Analyst False Positive mark + auto-adjust weight | Ngoài MVP |
 | Export PDF/CSV báo cáo tuần | Ngoài MVP |
 | LLM triage assistant + weekly narrative | Ngoài MVP (chỉ explain async trên Incident) |
-| Cloud LLM (OpenAI/Gemini) | Không dùng cho demo chính (Ollama) |
+| Cloud LLM cho **demo explain** (OpenAI/Gemini) | Không dùng cho demo chính (Ollama). Cloud LLM **được phép** cho bước offline rule mining nếu cần (không nằm runtime) |
+| OWASP Benchmark làm eval bắt buộc MVP | **Phase 2** — MVP dùng held-out + benign + adversarial trong rule-generator |
 | Thymeleaf FE / WebSocket | Không chọn |
 | Liquibase | Không chọn (dùng Flyway) |
 
@@ -127,6 +135,7 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 - Correlation giàu hơn (cùng path pattern / category / UA cluster)
 - FP feedback loop
 - Weekly narrative LLM + export báo cáo
+- OWASP Benchmark / eval corpus mở rộng cho rule-generator
 - (Tuỳ chọn) Kafka UI cố định trong compose
 
 ### 3.4 Quyết định đã chốt (single source)
@@ -142,7 +151,9 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
 | Realtime UI | **SSE** |
 | Auth | **JWT**, role `admin` |
 | Migration | **Flyway** |
-| LLM | **Bắt buộc**, **Ollama**, **incident explain async** (không block detect/alert) |
+| LLM online | **Bắt buộc**, **Ollama**, **incident explain async** (không block detect/alert) |
+| LLM offline | **AI-assisted rule mining** trong `detection-rule-generator/` (Cursor/local LLM); không trên detect path |
+| Nguồn production rules | Output đã eval + human review từ rule-generator → Flyway seed (8–15 rule); CRUD admin vẫn có |
 | Incident | **Phân cấp + tổng hợp:** CRITICAL promote ngay; MEDIUM/HIGH gom theo `(app_id, client_ip)` + cửa sổ; **1 incident : N alerts**; triage trên Incident |
 | Kafka topics | `raw-web-logs`, `security-alerts` |
 | Normalize | In-process trong Spring |
@@ -190,7 +201,7 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
      ┌──────────────────┐          ┌─────────────────────┐
      │  PostgreSQL      │          │  Kafka              │
      │  events/alerts/  │          │  security-alerts    │
-     │  incidents       │          │                     │
+     │  incidents/rules │          │                     │
      └──────────────────┘          └──────────┬──────────┘
                                               ▼
                                    ┌─────────────────────┐
@@ -199,12 +210,25 @@ Hệ thống **không** phải WAF inline blocking trên reverse proxy. Đây l�
                                    └─────────────────────┘
 ```
 
+Nguồn rule (offline — xem `docs/rule-creation.md`):
+
+```text
+detection-rule-generator/
+  raw corpora → normalize → cluster → AI rule builder
+       → abstract rule → compiler → DetectionRule JSON
+       → evaluator (held-out / benign / adversarial)
+       → rules/production/
+              │
+              ▼
+     Flyway seed / admin import → Spring rule engine (runtime)
+```
+
 Luồng Alert → Incident + LLM (MVP):
 
 ```text
 score ≥ threshold
   → tạo Alert (1-1 event) + SSE alert ngay
-  → Incident Manager đánh giá policy §7.4:
+  → Incident Manager đánh giá policy §7.5:
 
       [IMMEDIATE] severity = CRITICAL
           → nếu có Incident OPEN cùng key (app_id, client_ip) trong cửa sổ W
@@ -237,14 +261,16 @@ Frontend **không** đọc Kafka. React nhận alert/incident qua **SSE** từ S
 |--------|-------------|
 | `ingest` | Kafka consumer `raw-web-logs`, validate; offset Kafka là nguồn tiến độ (không dedupe hash phức tạp) |
 | `normalize` | Parse Nginx JSON → `WebEvent`; map `host` → `app_id` |
-| `rules` | Load rule từ DB, evaluate regex theo field |
+| `rules` | Load rule từ DB (seed từ rule-generator + CRUD), evaluate regex theo `target_field` |
 | `scoring` | `base + freq_bonus(5m) + status_bonus` → score 0–100 |
 | `alert` | Nếu score ≥ threshold app → tạo alert 1-1 với event, publish/SSE |
-| `incident` | Policy promote §7.4 (immediate/aggregate); gắn N alerts; lifecycle triage; trigger LLM khi Incident mới |
+| `incident` | Policy promote §7.5 (immediate/aggregate); gắn N alerts; lifecycle triage; trigger LLM khi Incident mới |
 | `api` | REST events/alerts/incidents/apps/rules/stats |
 | `realtime` | SSE fan-out alert + incident |
-| `llm` | Async explain khi Incident được **tạo**; `POST .../incidents/{id}/explain` để retry (profile `llm`) |
+| `llm` | Async explain khi Incident được **tạo**; `POST .../incidents/{id}/explain` để retry (profile `llm`) — **không** gen rule |
 | `security` | Spring Security + JWT |
+
+> Module **`detection-rule-generator/`** nằm ngoài Spring process: tooling Python/script offline; chi tiết pipeline trong `docs/rule-creation.md`.
 
 ---
 
@@ -384,7 +410,7 @@ Kafka UI: **không** nằm trong compose mặc định (tránh nặng máy chấ
 
 **WebEvent** — `id`, `app_id`, `event_time`, `client_ip`, `method`, `path`, `query`, `status`, `user_agent`, `referer`, `raw_ref`, `host`, `risk_score`, `created_at`
 
-**DetectionRule** — `id`, `code`, `name`, `category` (`SQLI`|`XSS`|`PATH_TRAVERSAL`), `pattern`, `target_field` (`path`|`query`|`ua`|`raw`), `weight`, `enabled`, `description`
+**DetectionRule** — `id`, `code`, `name`, `category` (`SQLI`|`XSS`|`PATH_TRAVERSAL`), `pattern`, `target_field` (`path`|`query`|`ua`|`raw`), `weight`, `enabled`, `description`, `source` (`HAND`|`AI_MINED`, default `AI_MINED` khi import từ generator), `generator_rule_id` (nullable), `rule_version` (nullable)
 
 **DetectionHit** — `id`, `event_id`, `rule_id`, `evidence`, `weight`, `created_at`
 
@@ -397,9 +423,298 @@ Kafka UI: **không** nằm trong compose mặc định (tránh nặng máy chấ
 ### 7.2 Rule categories MVP
 
 Chỉ 3 category: `SQLI`, `XSS`, `PATH_TRAVERSAL`.  
-Seed 8–15 rule qua Flyway. CRUD API để bật/tắt và sửa weight.
+Production seed **8–15 rule** qua Flyway, ưu tiên lấy từ `detection-rule-generator/rules/production/` (đã pass eval + human review). CRUD API để bật/tắt và sửa weight.  
+Rule chỉ nhắm field nhìn thấy trên **access log**: `path` / `query` / `ua` / `raw` — **không** phụ thuộc POST body (khớp §5.5).
 
-### 7.3 Scoring (chốt số)
+Chi tiết pipeline mining, abstract rule, compiler và metric: **`docs/rule-creation.md`**.
+
+### 7.2.1 Hợp đồng export từ rule-generator → Spring
+
+Mỗi file JSON trong `rules/production/` (hoặc bản gộp) phải map 1-1 sang entity `DetectionRule` runtime:
+
+```json
+{
+  "code": "SQLI-BOOLEAN-001",
+  "name": "Boolean tautology in query",
+  "category": "SQLI",
+  "pattern": "(?i)(\\bor\\b|\\band\\b)\\s+\\d+\\s*=\\s*\\d+",
+  "target_field": "query",
+  "weight": 40,
+  "enabled": true,
+  "description": "Detects classic boolean-based SQLi tautologies in query string",
+  "source": "AI_MINED",
+  "generator_rule_id": "SQLI-BOOLEAN-001",
+  "rule_version": "1.0.0"
+}
+```
+
+`category` **bắt buộc** dùng enum runtime (`SQLI`|`XSS`|`PATH_TRAVERSAL`), không dùng tên dài kiểu `SQL_INJECTION`.
+
+### 7.3 Java class design (chốt — backend)
+
+Outcome của `detection-rule-generator` **không** dừng ở JSON: artifact `rules/production/*.json` map 1-1 sang **JPA entity / enum / DTO** trong Spring. Section này là SoT cho package Java MVP.
+
+#### 7.3.1 Package layout
+
+```text
+com.huylq.it6027.backend
+├── domain
+│   ├── entity          # JPA entities §7.1
+│   └── enums           # RuleCategory, TargetField, RuleSource, …
+├── rules
+│   ├── RuleEngine
+│   ├── RuleEvaluator
+│   ├── DetectionRuleRepository
+│   └── dto             # RuleCreateRequest, RuleUpdateRequest, RuleResponse, RuleImportItem
+├── scoring
+├── ingest / normalize / alert / incident / api / realtime / llm / security
+└── persistence         # Flyway dưới resources/db/migration
+```
+
+#### 7.3.2 Enums (Java)
+
+```java
+public enum RuleCategory { SQLI, XSS, PATH_TRAVERSAL }
+
+public enum TargetField { PATH, QUERY, UA, RAW }
+// JSON/DB: path|query|ua|raw — map lowercase khi serialize (@JsonValue / AttributeConverter)
+
+public enum RuleSource { HAND, AI_MINED }
+
+public enum Severity { LOW, MEDIUM, HIGH, CRITICAL }
+
+public enum TriageStatus { OPEN, ACK, CLOSED }   // Alert + Incident
+
+public enum PromoteReason { IMMEDIATE, AGGREGATE }
+
+public enum ExplanationStatus { PENDING, READY, FAILED, SKIPPED }
+
+public enum ExplanationConfidence { LOW, MEDIUM, HIGH }
+```
+
+#### 7.3.3 Entity `DetectionRule` (consumer của rule-generator)
+
+```java
+@Entity
+@Table(name = "detection_rules",
+       uniqueConstraints = @UniqueConstraint(columnNames = "code"))
+public class DetectionRule {
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 64)
+    private String code;                 // e.g. SQLI-BOOLEAN-001
+
+    @Column(nullable = false)
+    private String name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private RuleCategory category;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String pattern;              // Java regex
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_field", nullable = false, length = 16)
+    private TargetField targetField;
+
+    @Column(nullable = false)
+    private int weight;
+
+    @Column(nullable = false)
+    private boolean enabled = true;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private RuleSource source = RuleSource.AI_MINED;
+
+    @Column(name = "generator_rule_id", length = 64)
+    private String generatorRuleId;      // nullable; id bên lab offline
+
+    @Column(name = "rule_version", length = 32)
+    private String ruleVersion;          // nullable; semver từ generator
+
+    // getters/setters hoặc Lombok — tuỳ convention repo
+}
+```
+
+**Map JSON production → entity:**
+
+| JSON field | Java field | Ghi chú |
+|------------|------------|---------|
+| `code` | `code` | Unique; dùng làm idempotent import key |
+| `name` | `name` | |
+| `category` | `RuleCategory` | `SQLI`/`XSS`/`PATH_TRAVERSAL` |
+| `pattern` | `pattern` | Compile `Pattern.compile` khi evaluate (cache) |
+| `target_field` | `TargetField` | `query` → `QUERY`, … |
+| `weight` | `weight` | |
+| `enabled` | `enabled` | |
+| `description` | `description` | |
+| `source` | `RuleSource` | mặc định `AI_MINED` khi import từ generator |
+| `generator_rule_id` | `generatorRuleId` | thường = `code` lúc gen |
+| `rule_version` | `ruleVersion` | |
+
+Metadata lab (`coverage`, `confidence`, `metrics`, abstract `conditions`) **không** persist vào entity runtime — chỉ nằm trong `detection-rule-generator/`.
+
+#### 7.3.4 Các entity còn lại (tóm tắt class)
+
+```java
+@Entity
+public class Application {
+    Long id;
+    String name;
+    String hostPattern;
+    int riskThreshold = 60;
+    boolean enabled;
+    Instant createdAt;
+}
+
+@Entity
+public class WebEvent {
+    Long id;
+    Long appId;
+    Instant eventTime;
+    String clientIp;
+    String method;
+    String path;
+    String query;
+    int status;
+    String userAgent;
+    String referer;
+    String rawRef;
+    String host;
+    int riskScore;
+    Instant createdAt;
+}
+
+@Entity
+public class DetectionHit {
+    Long id;
+    Long eventId;
+    Long ruleId;
+    String evidence;          // đoạn khớp
+    int weight;               // copy từ rule lúc hit
+    Instant createdAt;
+}
+
+@Entity
+public class Alert {
+    Long id;
+    Long appId;
+    Long eventId;             // NOT NULL, 1-1 event
+    Long incidentId;          // nullable
+    String clientIp;
+    Severity severity;
+    int score;
+    String title;
+    String summary;
+    TriageStatus status;
+    Instant createdAt;
+    Instant updatedAt;
+}
+
+@Entity
+public class Incident {
+    Long id;
+    Long appId;
+    String clientIp;
+    Severity severity;
+    int score;
+    int alertCount;
+    String title;
+    TriageStatus status;
+    PromoteReason promoteReason;
+    String explanation;
+    ExplanationConfidence explanationConfidence;
+    ExplanationStatus explanationStatus;
+    String explanationError;
+    Instant explainedAt;
+    Instant openedAt;
+    Instant createdAt;
+    Instant updatedAt;
+}
+```
+
+Quan hệ JPA gợi ý MVP: FK cột `*_id` đủ dùng; `@ManyToOne` optional. **1 Incident : N Alert**; **1 WebEvent : 1 Alert** (khi có alert); **1 WebEvent : N DetectionHit**.
+
+#### 7.3.5 DTO & service quanh rule (import từ generator)
+
+```java
+/** Body POST /api/rules hoặc item trong import batch */
+public record RuleCreateRequest(
+    String code,
+    String name,
+    RuleCategory category,
+    String pattern,
+    TargetField targetField,
+    int weight,
+    boolean enabled,
+    String description,
+    RuleSource source,
+    String generatorRuleId,
+    String ruleVersion
+) {}
+
+public record RuleUpdateRequest(
+    String name,
+    String pattern,
+    TargetField targetField,
+    Integer weight,
+    Boolean enabled,
+    String description
+) {}
+
+public record RuleResponse(
+    Long id,
+    String code,
+    String name,
+    RuleCategory category,
+    String pattern,
+    TargetField targetField,
+    int weight,
+    boolean enabled,
+    String description,
+    RuleSource source,
+    String generatorRuleId,
+    String ruleVersion
+) {}
+
+public interface DetectionRuleRepository extends JpaRepository<DetectionRule, Long> {
+    List<DetectionRule> findByEnabledTrue();
+    Optional<DetectionRule> findByCode(String code);
+}
+
+/** Evaluate enabled rules against one WebEvent → DetectionHit drafts */
+public interface RuleEngine {
+    List<DetectionHit> evaluate(WebEvent event, List<DetectionRule> rules);
+}
+
+/**
+ * Upsert theo code từ rules/production JSON (dev tooling hoặc admin import).
+ * Không chạy trên Kafka hot path.
+ */
+public interface RuleImportService {
+    int importFromProductionItems(List<RuleCreateRequest> items);
+}
+```
+
+#### 7.3.6 Flyway — cột provenance
+
+Bảng `detection_rules` MVP phải có tối thiểu:
+
+```sql
+code, name, category, pattern, target_field, weight, enabled, description,
+source, generator_rule_id, rule_version
+```
+
+Seed ưu tiên sinh từ `detection-rule-generator/rules/production/` (script export → `V*__seed_detection_rules.sql`). Rule bổ sung tay: `source = 'HAND'`.
+
+### 7.4 Scoring (chốt số)
 
 ```text
 N = 5 phút
@@ -416,7 +731,7 @@ Alert khi `score >= application.risk_threshold`.
 
 Severity gợi ý: `LOW` (&lt;40 lưu event thôi), `MEDIUM` (40–69), `HIGH` (70–84), `CRITICAL` (≥85) — alert vẫn chỉ tạo khi vượt threshold app.
 
-### 7.4 Incident promotion policy (chốt)
+### 7.5 Incident promotion policy (chốt)
 
 ```text
 W = 5 phút                          # cửa sổ correlation incident
@@ -460,9 +775,18 @@ Khi gắn thêm alert vào Incident đã có: cập nhật `alert_count`, `sever
 
 ---
 
-## 9. LLM extension (phạm vi đã thu hẹp)
+## 9. LLM extension (hai vai trò — đã khoá)
 
-### 9.1 Use case MVP (bắt buộc)
+### 9.0 Phân tách bắt buộc
+
+| Vai trò | Khi nào | Mục đích | Có detect online? |
+|---------|---------|----------|-------------------|
+| **Offline rule mining** | Dev/lab, trong `detection-rule-generator/` | Gen / review / optimize rule từ corpora | **Không** — chỉ tạo artifact rule |
+| **Online incident explain** | Runtime, sau khi Incident **mới tạo** | Giải thích tiếng Việt cho SOC | **Không** — chỉ explain |
+
+Hai vai trò **không** gộp chung process. Runtime Spring **không** gọi LLM để quyết định hit/miss.
+
+### 9.1 Use case MVP online (bắt buộc)
 
 **Incident explanation (async)** — chỉ khi Incident **được tạo mới** (IMMEDIATE hoặc AGGREGATE đủ K), hệ thống **tự enqueue** job gọi Ollama (không block ingest/alert/SSE).
 
@@ -472,14 +796,19 @@ Khi gắn thêm alert vào Incident đã có: cập nhật `alert_count`, `sever
 - Gắn thêm alert vào Incident đã có: **không** auto re-explain  
 - API `POST /api/incidents/{id}/explain` chỉ dùng để **retry** (cũng async)
 
-### 9.2 Ngoài MVP
+### 9.2 Use case MVP offline (bắt buộc deliverable tooling)
+
+**AI-assisted rule mining** — xem `docs/rule-creation.md`. Output cuối phải compile được thành `DetectionRule` (§7.2.1) và pass eval trước khi seed.
+
+### 9.3 Ngoài MVP
 
 - Triage assistant  
 - Weekly report narrative  
 - Auto re-explain mỗi lần gắn alert mới  
 - Correlation ngoài `(app_id, client_ip)` + cửa sổ W  
+- LLM làm detector trực tiếp trên Kafka stream  
 
-### 9.3 Ràng buộc
+### 9.4 Ràng buộc (online explain)
 
 - LLM **không** detect và **không** nằm trên đường critical path tạo alert/incident  
 - Timeout + fallback: lỗi Ollama → `FAILED`, alert/incident vẫn xem được trên UI  
@@ -497,6 +826,7 @@ Khi gắn thêm alert vào Incident đã có: cập nhật `alert_count`, `sever
 - OWASP Top 10 (nhấn Injection, XSS) theo hướng **detection trên log**  
 - Hạn chế access log (thiếu POST body)  
 - Signature vs anomaly; FP/FN; alert fatigue  
+- **Detection engineering:** AI-assisted rule mining offline → seed runtime (không train classifier online)  
 - Workflow Detect → Alert → Incident → (async) Explain → Triage → Report  
 
 ### 10.2 Chính sách & quản trị (chốt khung)
@@ -531,22 +861,35 @@ Báo cáo **tiếng Việt**; thuật ngữ kỹ thuật giữ Anh khi cần. UI
 
 ## 11. Đánh giá hiệu quả
 
-### 11.1 Bộ test
+### 11.1 Bộ test — hai tầng
+
+**Tầng A — Rule quality (offline, `detection-rule-generator`):**
+
+- Held-out attack payloads (không đưa vào prompt gen rule)
+- Benign HTTP parameter values (đo FPR)
+- Adversarial variants (encoding / case / whitespace)
+- Metric: Precision, Recall, F1, FPR, Rule Coverage theo category  
+- Chi tiết: `docs/rule-creation.md`
+
+**Tầng B — Runtime E2E (Juice Shop lab):**
 
 - Tập A: ~50 request bình thường (browse Juice Shop)  
 - Tập B: ~30 request probe qua **script curl/k6** (SQLi/XSS/path traversal) trong lab  
 - Gắn nhãn ground truth trước khi chạy detector (file trong `datasets/`)  
-- Báo cáo: TP / FP / FN thô  
+- Báo cáo: TP / FP / FN thô trên lab
 
 ### 11.2 Metrics vận hành
 
 - E2E latency mục tiêu: **request → alert SSE &lt; 5 giây**  
-- Số rule enabled / 3 categories  
+- Số rule enabled / 3 categories (ưu tiên 8–15 production)  
 - Số alert theo `app_id` trong phiên demo  
+- Provenance: tỷ lệ rule `AI_MINED` vs `HAND` trong seed
 
 ### 11.3 Dataset nộp
 
-Compose + script reproduce + mẫu raw log (nếu cần offline) trong `datasets/`. Không phụ thuộc recording tay.
+- Compose + Attack Scenario Runner + ground truth trong `datasets/`  
+- Corpora + báo cáo eval rule-generator trong `detection-rule-generator/` (không phụ thuộc recording tay)  
+- Không bắt buộc ship full upstream corpora nếu license hạn chế — ghi rõ nguồn + script tải trong README module
 
 ---
 
@@ -554,25 +897,26 @@ Compose + script reproduce + mẫu raw log (nếu cần offline) trong `datasets
 
 | Tuần | Việc | Deliverable |
 |------|------|-------------|
-| 1 | Chốt design (done), outline báo cáo NIST, schema Flyway | SOLUTION_DESIGN v1.3 |
+| 1 | Chốt design (done), outline báo cáo NIST, schema Flyway | SOLUTION_DESIGN v1.6 + rule-creation + Java class §7.3 |
 | 2 | Compose: Juice + Nginx JSON + Filebeat → Kafka | `raw-web-logs` có data |
 | 3 | Spring ingest + normalize + persist; skeleton `datasets/probes` | API events + runner khung |
-| 4 | Rule engine + scoring + seed rules | Hits + score |
+| 4 | Rule-generator MVP (normalize/cluster/AI/eval) + compile → seed; Spring rule engine + scoring | Hits + score + `rules/production/` |
 | 5 | Alert + Incident + JWT + publish `security-alerts` + SSE | Alert/Incident realtime |
-| 6 | React SOC + hoàn thiện Attack Scenario Runner + ground truth | Demo O1–O8 |
+| 6 | React SOC + hoàn thiện Attack Scenario Runner + ground truth | Demo O1–O8, O10 |
 | 7 | Ollama explain **async** + chương quản trị NIST | O9 + draft báo cáo |
-| 8 | Đo FP/FN, polish, slide, buffer | Nộp BTL |
+| 8 | Đo FP/FN (lab + corpus), polish, slide, buffer | Nộp BTL |
 
 ---
 
 ## 13. Deliverables nộp môn
 
 1. Monorepo + `docker-compose.yml` (+ profile `llm`)  
-2. README chạy lab / probe / xem incident / explain async  
+2. README chạy lab / probe / xem incident / explain async / chạy rule-generator  
 3. Config Nginx + Filebeat  
-4. Báo cáo PDF (kỹ thuật + NIST CSF + ISO phụ lục + đánh giá)  
-5. Slide 8–10 phút  
-6. `SOLUTION_DESIGN.md`  
+4. `detection-rule-generator/` + báo cáo eval rule (precision/recall/coverage)  
+5. Báo cáo PDF (kỹ thuật + NIST CSF + ISO phụ lục + đánh giá)  
+6. Slide 8–10 phút  
+7. `docs/solution-design.md` + `docs/rule-creation.md`  
 
 ---
 
@@ -580,19 +924,26 @@ Compose + script reproduce + mẫu raw log (nếu cần offline) trong `datasets
 
 ```text
 IT6027-26.1A01-G21-WAF-log-analyzer/
-├── SOLUTION_DESIGN.md
 ├── README.md
 ├── docker-compose.yml
 ├── infra/
 │   ├── nginx/
 │   ├── filebeat/
 │   └── kafka/
-├── backend/                    # Spring Boot security platform
-├── frontend/                   # React SOC dashboard
-├── datasets/                   # ground truth + Attack Scenario Runner + sample logs
-│   ├── probes/                 # scenarios.yaml + run.sh + browse_clean.sh
+├── backend/                         # Spring Boot security platform
+├── frontend/                        # React SOC dashboard
+├── detection-rule-generator/        # Offline AI-assisted rule mining lab
+│   ├── data/                        # raw / normalized / clustered / evaluation
+│   ├── pipeline/
+│   ├── ai/                          # prompts + outputs
+│   ├── rules/                       # candidates / reviewed / production
+│   └── evaluator/
+├── datasets/                        # ground truth + Attack Scenario Runner + sample logs
+│   ├── probes/                      # scenarios.yaml + run.sh + browse_clean.sh
 │   └── ground_truth.csv
 └── docs/
+    ├── solution-design.md           # Source of truth kiến trúc runtime
+    ├── rule-creation.md             # Spec offline rule mining + export contract
     ├── report/
     └── slides/
 ```
@@ -603,12 +954,14 @@ IT6027-26.1A01-G21-WAF-log-analyzer/
 
 | Rủi ro | Mitigation |
 |--------|------------|
-| Scope phình | Đã khoá §3.2; ModSec/DVWA/PDF/FP-loop = không MVP |
-| Máy chấm bài yếu | Ollama theo profile `llm`; không Kafka UI mặc định |
+| Scope phình | Đã khoá §3.2; ModSec/DVWA/PDF/FP-loop = không MVP; OWASP Benchmark = Phase 2 |
+| Máy chấm bài yếu | Ollama theo profile `llm`; không Kafka UI mặc định; rule-generator chạy offline khi cần |
 | Parse log brittle | Nginx JSON schema cố định §5.4 |
 | Alert noise | Threshold 60; Incident chỉ mở khi CRITICAL hoặc đủ K=3; ACK trên Incident |
+| Rule overfit payload | Held-out + adversarial eval; human review trước seed; coverage không chỉ trên generation set |
 | LLM chậm / sập | Gọi **async** khi Incident mới tạo; timeout; `FAILED`/`SKIPPED`; không block SSE |
-| LLM bịa | Ground bằng rule hits của nhiều alert trong Incident; chỉ explain |
+| LLM bịa (explain) | Ground bằng rule hits của nhiều alert trong Incident; chỉ explain |
+| LLM gen rule kém | Evaluator bắt buộc; không seed candidate chưa pass metric; CRUD tắt rule xấu |
 | Trùng đồ án | Không fork Watch-Tower |
 
 ---
@@ -620,7 +973,9 @@ IT6027-26.1A01-G21-WAF-log-analyzer/
 | FE React hay Thymeleaf? | **React + Vite** |
 | SSE hay WebSocket? | **SSE** |
 | Auth JWT hay session? | **JWT** (role admin) |
-| LLM Ollama hay cloud? | **Ollama**; incident explain **async**; bắt buộc deliverable |
+| LLM Ollama hay cloud? | **Ollama** cho explain runtime; cloud LLM **tuỳ chọn** cho offline rule mining |
+| Nguồn seed rules? | **AI-mined** từ `detection-rule-generator` + human review → Flyway (8–15); CRUD tay vẫn có |
+| Eval rule bằng gì? | MVP: held-out + benign + adversarial; Juice probes E2E; OWASP Benchmark = Phase 2 |
 | DVWA trong MVP? | **Phase 2** |
 | ModSec so sánh? | **Không** |
 | elk-lab clone hay tự compose? | **Tự compose** + Filebeat theo SIEM-in-a-box |
@@ -629,7 +984,7 @@ IT6027-26.1A01-G21-WAF-log-analyzer/
 | Threshold / N? | **60** / **5 phút** |
 | Khung quản trị? | **NIST CSF chính**, ISO phụ |
 | Apache / FP mark / PDF export? | **Ngoài MVP** |
-| Java version? | **17** |
+| Java version? | **Java 25** (khớp §3.4 / §6.1) |
 | Alert 1-1 hay aggregate? | **1 alert : 1 event** (detection); Incident thì **1 : N alerts** |
 | Incident? | **Phân cấp:** CRITICAL → IMMEDIATE; MEDIUM/HIGH → AGGREGATE (K=3, W=5p, key=`app_id+client_ip`) |
 | LLM sync hay async? | **Async** khi Incident **mới tạo**; API explain = retry |
@@ -647,3 +1002,5 @@ Còn lại chỉ là metadata hành chính (tên SV, deadline môn, có làm nh�
 | 1.2 | 2026-09-12 | **Thêm Incident**; LLM explain **async**; API triage/explain trên Incident; SSE incidents |
 | 1.3 | 2026-09-12 | **Sửa Incident:** bỏ 1–1; phân cấp IMMEDIATE (CRITICAL) + AGGREGATE (MEDIUM/HIGH, K=3, W=5p, key app_id+IP); quan hệ 1 incident : N alerts; LLM chỉ khi Incident mới tạo |
 | 1.4 | 2026-09-12 | **Chốt Attack Scenario Runner** ở upstream: `datasets/probes` (scenarios có nhãn + script tự chạy qua Nginx); không dùng ZAP/Nuclei/sqlmap làm runner chính MVP |
+| 1.5 | 2026-09-15 | **Gắn `detection-rule-generator`:** AI-assisted rule mining offline → compile `DetectionRule` → Flyway seed; tách LLM offline (mine) vs online (explain); eval 2 tầng; schema provenance; monorepo + `docs/rule-creation.md`; sửa mâu thuẫn Java 17→25 trong open questions |
+| 1.6 | 2026-09-18 | **Java class design §7.3:** package/enum/entity/DTO/service; `DetectionRule` + provenance map từ JSON production; đánh số lại Scoring §7.4, Incident §7.5 |

@@ -16,7 +16,7 @@
 
 ## 2. Goal
 
-Khi `score >= threshold` hệ thống tạo Alert (1-1 event), promote Incident theo policy §7.4, phát SSE, bảo vệ API bằng JWT role `admin`.
+Khi `score >= threshold` hệ thống tạo Alert (1-1 event), promote Incident theo policy §7.5, phát SSE, bảo vệ API bằng JWT role `admin`.
 
 ## 3. Outcome
 
@@ -33,8 +33,8 @@ Khi `score >= threshold` hệ thống tạo Alert (1-1 event), promote Incident 
 ### In-scope
 
 - Tạo Alert khi `score >= application.risk_threshold` (default 60)
-- Severity gợi ý §7.3 trên alert (MEDIUM/HIGH/CRITICAL); không tạo alert nếu dưới threshold
-- Incident Manager đúng bảng §7.4; `W=5p`, `K=3` cấu hình `application.yml`
+- Severity gợi ý §7.4 trên alert (MEDIUM/HIGH/CRITICAL); không tạo alert nếu dưới threshold
+- Incident Manager đúng bảng §7.5; `W=5p`, `K=3` cấu hình `application.yml`
 - Triage Incident: `PATCH /api/incidents/{id}` status `ACK`/`CLOSED`
 - REST: alerts, incidents (kèm danh sách alerts), apps, rules, stats overview (có thể KPI thô)
 - Kafka producer `security-alerts`; SSE fan-out từ Spring (FE chưa bắt buộc)
