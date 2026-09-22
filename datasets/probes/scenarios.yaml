@@ -1,0 +1,36 @@
+# Week 1 skeleton — smoke requests only.
+# Full Attack Scenario Runner (~30 probes + ground truth) lands in Week 4.
+#
+# Ethics: only target the local lab (Juice Shop via Nginx on this machine).
+# Do not point these scripts at third-party hosts.
+
+base_url: http://127.0.0.1
+default_host: juice.lab.local
+
+scenarios:
+  - id: smoke-home
+    category: CLEAN
+    method: GET
+    path: /
+    query: ""
+    host: juice.lab.local
+    expected: clean
+    note: Juice Shop home via juice.lab.local
+
+  - id: smoke-shop-home
+    category: CLEAN
+    method: GET
+    path: /
+    query: ""
+    host: shop.lab.local
+    expected: clean
+    note: Same upstream, second app scope (AC-3)
+
+  - id: smoke-search
+    category: CLEAN
+    method: GET
+    path: /rest/products/search
+    query: q=apple
+    host: juice.lab.local
+    expected: clean
+    note: Benign query to generate a WebEvent with path+query

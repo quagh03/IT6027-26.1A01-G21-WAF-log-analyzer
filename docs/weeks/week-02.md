@@ -6,7 +6,7 @@
 | Theme | Signature rules + DetectionHit + score 0–100 |
 | Phụ thuộc | Week 01 DoD (event chuẩn trong DB) |
 | Map outcome | **O3**, **O4**, **O5** (app threshold), **O10** (seed từ generator nếu sẵn) |
-| Trạng thái | `Not started` |
+| Trạng thái | `Done` |
 
 ---
 
@@ -81,12 +81,12 @@ Mỗi `WebEvent` đi qua rule engine (SQLi, XSS, Path Traversal), ghi `Detection
 
 Tuần **Done** khi **tất cả** điều sau đúng:
 
-- [ ] Mọi AC trong §6 pass trên lab local (test tự động + 1 lần ingest thật)
-- [ ] Artifact §8 nằm đúng path
-- [ ] Công thức score ghi chú trong code/README khớp §7.4 (không “xấp xỉ”)
-- [ ] `DetectionRule` có `source` / `generator_rule_id` / `rule_version` (có thể null với rule `HAND`)
-- [ ] Không merge Alert/Incident/SSE/UI
-- [ ] Demo checkpoint §10 chạy được
+- [x] Mọi AC trong §6 pass trên lab local (test tự động + ingest thật: SQLI/XSS/PATH_TRAVERSAL + clean score 0)
+- [x] Artifact §8 nằm đúng path (`rules/`, `scoring/`, API detail hits, `GET /api/rules`)
+- [x] Công thức score ghi chú trong code/README khớp §7.4
+- [x] `DetectionRule` có provenance; seed 14 rule / 3 category
+- [x] Không merge Alert/Incident/SSE/UI
+- [x] Demo checkpoint §10 chạy được
 
 ## 8. Deliverables
 

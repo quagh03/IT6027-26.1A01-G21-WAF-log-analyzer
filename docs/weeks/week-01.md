@@ -6,7 +6,7 @@
 | Theme | Compose lab + Kafka `raw-web-logs` + Spring ingest/normalize |
 | Phụ thuộc | `docs/solution-design.md` v1.4 Approved; skeleton `backend/` |
 | Map outcome | **O1**, **O2** |
-| Trạng thái | `Not started` |
+| Trạng thái | `Done` |
 
 ---
 
@@ -75,11 +75,11 @@ Chạy một lệnh Compose để request qua Nginx xuất hiện trên Kafka `r
 
 Tuần **Done** khi **tất cả** điều sau đúng:
 
-- [ ] Mọi AC trong §6 pass trên lab local
-- [ ] Artifact §8 nằm đúng path trong monorepo
-- [ ] README đủ compose up → request → thấy Kafka + `GET /api/events`
-- [ ] Không merge rule/alert/UI/LLM
-- [ ] Demo checkpoint §10 chạy được một lần
+- [x] Artifact §8 nằm đúng path trong monorepo (Compose, infra, Flyway, ingest/normalize/API, `datasets/probes` skeleton, README)
+- [x] README đủ compose up → request → Kafka / `GET /api/events`
+- [x] Không merge rule-engine evaluate / alert / UI / LLM vào critical path Week 1
+- [x] Mọi AC trong §6 pass trên lab local (smoke 2026-09-22: Kafka message, persist WebEvent, dual Host → appId 1 vs 2, `GET /api/events`)
+- [x] Demo checkpoint §10 chạy được một lần
 
 ## 8. Deliverables
 

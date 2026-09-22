@@ -6,6 +6,7 @@ import com.huylq.it6027.backend.normalize.AppResolver;
 import com.huylq.it6027.backend.normalize.NginxAccessLog;
 import com.huylq.it6027.backend.normalize.NginxAccessLogParser;
 import com.huylq.it6027.backend.repository.WebEventRepository;
+import com.huylq.it6027.backend.rules.DetectionPipeline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -20,23 +21,23 @@ public class IngestService {
   private final NginxAccessLogParser parser;
   private final AppResolver appResolver;
   private final WebEventRepository webEventRepository;
+  private final DetectionPipeline detectionPipeline;
 
   public IngestService(
       NginxAccessLogParser parser,
       AppResolver appResolver,
-      WebEventRepository webEventRepository
+      WebEventRepository webEventRepository,
+      DetectionPipeline detectionPipeline
   ) {
     this.parser = parser;
     this.appResolver = appResolver;
     this.webEventRepository = webEventRepository;
+    this.detectionPipeline = detectionPipeline;
   }
 
   /**
-   * Normalize a Kafka payload and persist a {@link WebEvent}.
-   *
-   * @param rawPayload   Filebeat envelope or bare Nginx JSON
-   * @param rawRef       idempotency key (topic-partition-offset); may be null
-   * @return persisted event, or empty if duplicate raw_ref
+   * Normalize a Kafka payload, persist a {@link WebEvent}, then run detection + scoring.
+   * Duplicate {@code raw_ref} skips re-detect (returns existing row).
    */
   @Transactional
   public WebEvent ingestRaw(String rawPayload, String rawRef) {
@@ -70,18 +71,20 @@ public class IngestService {
 
     try {
       WebEvent saved = webEventRepository.save(event);
+      webEventRepository.flush();
+      detectionPipeline.process(saved);
       log.info(
-          "Ingested event id={} appId={} {} {} status={} host={}",
+          "Ingested event id={} appId={} {} {} status={} host={} score={}",
           saved.getId(),
           app.getId(),
           saved.getMethod(),
           saved.getPath(),
           saved.getStatus(),
-          saved.getHost()
+          saved.getHost(),
+          saved.getRiskScore()
       );
       return saved;
     } catch (DataIntegrityViolationException e) {
-      // Concurrent redelivery raced on uq_web_events_raw_ref
       if (rawRef != null) {
         return webEventRepository.findByRawRef(rawRef)
             .orElseThrow(() -> e);

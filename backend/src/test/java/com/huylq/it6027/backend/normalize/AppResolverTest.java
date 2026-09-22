@@ -1,8 +1,8 @@
 package com.huylq.it6027.backend.normalize;
 
+import com.huylq.it6027.backend.cache.ApplicationRedisCache;
 import com.huylq.it6027.backend.entity.Application;
 import com.huylq.it6027.backend.ingest.UnprocessableLogException;
-import com.huylq.it6027.backend.repository.ApplicationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class AppResolverTest {
 
   @Mock
-  ApplicationRepository applicationRepository;
+  ApplicationRedisCache applicationRedisCache;
 
   AppResolver resolver;
 
@@ -37,10 +37,8 @@ class AppResolverTest {
         .riskThreshold(60)
         .enabled(true)
         .build();
-    // ids via reflection not needed — identity by name is enough for assert
-    when(applicationRepository.findByEnabledTrue()).thenReturn(List.of(juice, shop));
-    resolver = new AppResolver(applicationRepository);
-    resolver.reload();
+    when(applicationRedisCache.getEnabledApplications()).thenReturn(List.of(juice, shop));
+    resolver = new AppResolver(applicationRedisCache);
   }
 
   @Test

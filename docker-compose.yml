@@ -164,35 +164,64 @@ services:
     networks:
       - waf-net
 
-#  spring-security-backend:
-#    build:
-#      context: ./backend
-#      dockerfile: Dockerfile
-#    image: waf-log-analyzer/spring-security-backend:local
-#    container_name: spring-security-backend
-#    restart: unless-stopped
-#    depends_on:
-#      postgres:
-#        condition: service_healthy
-#      kafka:
-#        condition: service_healthy
-#      kafka-init:
-#        condition: service_completed_successfully
-#    ports:
-#      - "127.0.0.1:8080:8080"
-#    environment:
-#      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/waf_analyzer
-#      SPRING_DATASOURCE_USERNAME: waf
-#      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-waf}
-#      SPRING_JPA_HIBERNATE_DDL_AUTO: none
-#      SPRING_FLYWAY_ENABLED: "true"
-#      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-#      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-#      SERVER_PORT: 8080
-#    logging: *default-logging
-#    networks:
-#      - waf-net
+  redis:
+    image: redis:7.4-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    volumes:
+      - redis-data:/data
+    logging: *default-logging
+    networks:
+      - waf-net
+
+  spring-security-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: waf-log-analyzer/spring-security-backend:local
+    container_name: spring-security-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/waf_analyzer
+      SPRING_DATASOURCE_USERNAME: waf
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-waf}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SERVER_PORT: 8080
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+    logging: *default-logging
+    networks:
+      - waf-net
 
   # soc-dashboard:
   #   profiles: ["ui"]
@@ -230,6 +259,7 @@ services:
 volumes:
   nginx-logs:
   postgres-data:
+  redis-data:
   # ollama-data:
 
 networks:

@@ -16,6 +16,13 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 2s
+      repositories:
+        enabled: false
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
     consumer:
@@ -38,6 +45,15 @@ app:
   kafka:
     topics:
       raw-web-logs: raw-web-logs
+  scoring:
+    # N in solution-design §7.4 — DetectionHit frequency window by client_ip
+    window-minutes: 5
+  cache:
+    # Redis key TTLs (Pattern objects stay in-JVM only after fetch; source of truth is Redis)
+    ttl:
+      enabled-rules: 10m
+      rule-pattern: 24h
+      applications: 10m
 
 server:
   port: ${SERVER_PORT:8080}
@@ -45,4 +61,5 @@ server:
 logging:
   level:
     com.huylq.it6027.backend.ingest: INFO
+    com.huylq.it6027.backend.rules: INFO
     org.springframework.kafka: INFO
