@@ -7,7 +7,7 @@ spring:
     password: ${POSTGRES_PASSWORD:waf}
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     open-in-view: false
     properties:
       hibernate:
@@ -26,12 +26,6 @@ spring:
       enable-auto-commit: true
     listener:
       ack-mode: record
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
-      - org.springframework.boot.data.redis.autoconfigure.RedisAutoConfiguration
-      - org.springframework.boot.data.redis.autoconfigure.RedisRepositoriesAutoConfiguration
   ai:
     model:
       ollama:

@@ -1,9 +1,9 @@
 package com.huylq.it6027.backend.normalize;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huylq.it6027.backend.ingest.UnprocessableLogException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -16,7 +16,7 @@ class NginxAccessLogParserTest {
 
   @BeforeEach
   void setUp() {
-    parser = new NginxAccessLogParser(new ObjectMapper());
+    parser = new NginxAccessLogParser(JsonMapper.builder().build());
   }
 
   @Test

@@ -1,9 +1,9 @@
 package com.huylq.it6027.backend.normalize;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huylq.it6027.backend.ingest.UnprocessableLogException;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -12,14 +12,17 @@ import java.time.format.DateTimeParseException;
 /**
  * Parses Nginx JSON access log (§5.4). Also accepts a Filebeat envelope whose
  * {@code message} field holds that JSON (string or object).
+ *
+ * <p>Spring Boot 4 registers Jackson 3 {@link JsonMapper} (package {@code tools.jackson}),
+ * not the legacy {@code com.fasterxml.jackson.databind.ObjectMapper}.
  */
 @Component
 public class NginxAccessLogParser {
 
-  private final ObjectMapper objectMapper;
+  private final JsonMapper jsonMapper;
 
-  public NginxAccessLogParser(ObjectMapper objectMapper) {
-    this.objectMapper = objectMapper;
+  public NginxAccessLogParser(JsonMapper jsonMapper) {
+    this.jsonMapper = jsonMapper;
   }
 
   public NginxAccessLog parse(String rawPayload) {
@@ -27,7 +30,7 @@ public class NginxAccessLogParser {
       throw new UnprocessableLogException("Empty Kafka payload");
     }
     try {
-      JsonNode root = objectMapper.readTree(rawPayload);
+      JsonNode root = jsonMapper.readTree(rawPayload);
       JsonNode nginx = extractNginxNode(root);
       return mapNginx(nginx);
     } catch (UnprocessableLogException e) {
@@ -54,7 +57,7 @@ public class NginxAccessLogParser {
         throw new UnprocessableLogException("Filebeat message is blank");
       }
       try {
-        JsonNode nested = objectMapper.readTree(text);
+        JsonNode nested = jsonMapper.readTree(text);
         if (!looksLikeNginx(nested)) {
           throw new UnprocessableLogException("Filebeat message is not Nginx JSON schema");
         }
@@ -125,7 +128,6 @@ public class NginxAccessLogParser {
     try {
       return Instant.parse(timeIso);
     } catch (DateTimeParseException e) {
-      // Nginx $time_iso8601 sometimes lacks zone offset; treat as UTC if bare local form appears.
       try {
         if (timeIso.endsWith("Z") || timeIso.contains("+") || timeIso.lastIndexOf('-') > 10) {
           throw e;
