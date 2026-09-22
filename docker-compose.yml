@@ -164,38 +164,35 @@ services:
     networks:
       - waf-net
 
-  # spring-security-backend:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   image: waf-log-analyzer/spring-security-backend:local
-  #   container_name: spring-security-backend
-  #   restart: unless-stopped
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     kafka:
-  #       condition: service_healthy
-  #     kafka-init:
-  #       condition: service_completed_successfully
-  #   ports:
-  #     - "127.0.0.1:8080:8080"
-  #   environment:
-  #     SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/waf_analyzer
-  #     SPRING_DATASOURCE_USERNAME: waf
-  #     SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-waf}
-  #     SPRING_JPA_HIBERNATE_DDL_AUTO: none
-  #     SPRING_FLYWAY_ENABLED: "true"
-  #     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  #     SPRING_SECURITY_USER_NAME: admin
-  #     SPRING_SECURITY_USER_PASSWORD: ${SOC_ADMIN_PASSWORD:-admin}
-  #     SPRING_AUTOCONFIGURE_EXCLUDE: org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,org.springframework.boot.data.redis.autoconfigure.RedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure.RedisRepositoriesAutoConfiguration
-  #     OLLAMA_BASE_URL: http://ollama:11434
-  #     SERVER_PORT: 8080
-  #   logging: *default-logging
-  #   networks:
-  #     - waf-net
+  spring-security-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: waf-log-analyzer/spring-security-backend:local
+    container_name: spring-security-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/waf_analyzer
+      SPRING_DATASOURCE_USERNAME: waf
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-waf}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SERVER_PORT: 8080
+    logging: *default-logging
+    networks:
+      - waf-net
 
   # soc-dashboard:
   #   profiles: ["ui"]
