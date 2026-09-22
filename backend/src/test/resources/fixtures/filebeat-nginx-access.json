@@ -1,0 +1,5 @@
+{
+  "@timestamp": "2026-09-22T06:00:00.123Z",
+  "log_type": "access",
+  "message": "{\"time_iso\":\"2026-09-22T06:00:00+00:00\",\"remote_addr\":\"172.18.0.1\",\"host\":\"juice.lab.local\",\"request_method\":\"GET\",\"uri\":\"/api/Challenges\",\"args\":\"\",\"status\":200,\"body_bytes_sent\":512,\"http_user_agent\":\"curl/8.7.1\",\"http_referer\":\"-\",\"request_time\":0.004}"
+}
