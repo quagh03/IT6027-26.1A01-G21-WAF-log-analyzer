@@ -1,5 +1,6 @@
 package com.huylq.it6027.backend.rules;
 
+import com.huylq.it6027.backend.alert.AlertService;
 import com.huylq.it6027.backend.cache.EnabledRulesRedisCache;
 import com.huylq.it6027.backend.config.ScoringProperties;
 import com.huylq.it6027.backend.entity.DetectionHit;
@@ -17,8 +18,8 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * After a WebEvent is persisted: evaluate rules → save hits → set risk_score.
- * Does <strong>not</strong> create Alert/Incident (Week 3).
+ * After a WebEvent is persisted: evaluate rules → save hits → set risk_score →
+ * open an Alert when the score meets the app threshold and promote an Incident per §7.5.
  */
 @Service
 public class DetectionPipeline {
@@ -30,19 +31,22 @@ public class DetectionPipeline {
   private final RuleEngine ruleEngine;
   private final RiskScorer riskScorer;
   private final ScoringProperties scoringProperties;
+  private final AlertService alertService;
 
   public DetectionPipeline(
       EnabledRulesRedisCache enabledRulesRedisCache,
       DetectionHitRepository detectionHitRepository,
       RuleEngine ruleEngine,
       RiskScorer riskScorer,
-      ScoringProperties scoringProperties
+      ScoringProperties scoringProperties,
+      AlertService alertService
   ) {
     this.enabledRulesRedisCache = enabledRulesRedisCache;
     this.detectionHitRepository = detectionHitRepository;
     this.ruleEngine = ruleEngine;
     this.riskScorer = riskScorer;
     this.scoringProperties = scoringProperties;
+    this.alertService = alertService;
   }
 
   @Transactional
@@ -66,6 +70,7 @@ public class DetectionPipeline {
 
     int score = riskScorer.score(event, hits, windowHitCount);
     event.setRiskScore(score);
+    alertService.openIfThreshold(event);
 
     log.info(
         "Detected event id={} hits={} windowHits={} score={} ip={}",

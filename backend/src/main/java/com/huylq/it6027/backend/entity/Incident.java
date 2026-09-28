@@ -17,6 +17,8 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,6 +41,7 @@ public class Incident extends BaseEntity {
   @JoinColumn(name = "app_id", nullable = false)
   private Application application;
 
+  @JdbcTypeCode(SqlTypes.INET)
   @Column(name = "client_ip", nullable = false, columnDefinition = "inet")
   private String clientIp;
 

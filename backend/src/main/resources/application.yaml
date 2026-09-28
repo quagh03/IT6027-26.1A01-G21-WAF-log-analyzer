@@ -33,6 +33,10 @@ spring:
       enable-auto-commit: true
     listener:
       ack-mode: record
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: "1"
   ai:
     model:
       ollama:
@@ -45,9 +49,21 @@ app:
   kafka:
     topics:
       raw-web-logs: raw-web-logs
+      security-alerts: security-alerts
   scoring:
     # N in solution-design §7.4 — DetectionHit frequency window by client_ip
     window-minutes: 5
+  incident:
+    # W and K in solution-design §7.5
+    window-minutes: 5
+    aggregate-threshold: 3
+  llm:
+    # Week 4 turns this on with the Ollama profile. Off → explanation_status SKIPPED, no HTTP call.
+    enabled: false
+  security:
+    jwt:
+      secret: ${JWT_SECRET:waf-lab-jwt-secret-change-me-32b!}
+      access-token-minutes: 480
   cache:
     # Redis key TTLs (Pattern objects stay in-JVM only after fetch; source of truth is Redis)
     ttl:
@@ -62,4 +78,6 @@ logging:
   level:
     com.huylq.it6027.backend.ingest: INFO
     com.huylq.it6027.backend.rules: INFO
+    com.huylq.it6027.backend.alert: INFO
+    com.huylq.it6027.backend.incident: INFO
     org.springframework.kafka: INFO

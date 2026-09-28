@@ -20,8 +20,13 @@ curl -sS -o /dev/null -w "%{http_code}\n" -H 'Host: juice.lab.local' http://127.
 curl -sS -o /dev/null -w "%{http_code}\n" -H 'Host: shop.lab.local' http://127.0.0.1/
 sleep 3
 
-# normalized events
-curl -sS 'http://127.0.0.1:8080/api/events'
+# login (Week 3). Lab users: admin/admin, analyst/analyst, viewer/viewer.
+TOKEN=$(curl -sS -X POST 'http://127.0.0.1:8080/api/oauth/tokens' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["accessToken"])')
+
+# normalized events (Bearer required)
+curl -sS -H "Authorization: Bearer $TOKEN" 'http://127.0.0.1:8080/api/events'
 ```
 
 Optional smoke scripts:
@@ -56,7 +61,7 @@ docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
 
 1. Request via Nginx → message on `raw-web-logs` within ~5s.
 2. Spring consumer persists `web_events`.
-3. `GET /api/events` returns the event (`host`, `path`, `appId` / `appName`, `status`).
+3. `GET /api/events` with `Authorization: Bearer` returns the event (`host`, `path`, `appId` / `appName`, `status`). Unauthenticated calls return 401.
 4. `Host: shop.lab.local` maps to a different `appId` than `juice.lab.local`.
 
 ## Redis cache
@@ -101,8 +106,49 @@ curl -sS -o /dev/null -G -H 'Host: juice.lab.local' \
   --data-urlencode 'file=../../etc/passwd' \
   'http://127.0.0.1/rest/products/search'
 sleep 2
-curl -sS 'http://127.0.0.1:8080/api/events' | head
+curl -sS -H "Authorization: Bearer $TOKEN" 'http://127.0.0.1:8080/api/events' | head
 # pick an id with score > 0
-curl -sS 'http://127.0.0.1:8080/api/events/ID'
-curl -sS 'http://127.0.0.1:8080/api/rules?enabled=true' | head
+curl -sS -H "Authorization: Bearer $TOKEN" 'http://127.0.0.1:8080/api/events/ID'
+curl -sS -H "Authorization: Bearer $TOKEN" 'http://127.0.0.1:8080/api/rules?enabled=true' | head
 ```
+
+## Week 3 — alert, incident, JWT, SSE
+
+Every `/api/**` route except `POST /api/oauth/tokens` requires a Bearer token.
+Seeded lab users (BCrypt in Flyway V1):
+
+| Username | Password | Role |
+|----------|----------|------|
+| `admin` | `admin` | ADMIN (rules write, triage, read) |
+| `analyst` | `analyst` | ANALYST (triage + read, no rule write) |
+| `viewer` | `viewer` | VIEWER (read + SSE) |
+
+`app.llm.enabled` defaults to **false**. A new incident is stored with `explanation_status=SKIPPED`. Nothing on the ingest path calls Ollama. `POST /api/incidents/{id}/explain` returns **501** until Week 4.
+
+Alert when `risk_score >= application.risk_threshold` (default 60), one alert per event. Incident policy (§7.5):
+
+- `CRITICAL` (score ≥ 85) → `promote_reason=IMMEDIATE`
+- `MEDIUM`/`HIGH` → attach to an OPEN incident for the same `(app_id, client_ip)` inside 5 minutes, otherwise wait until **3** unattached alerts in that window, then `AGGREGATE`
+- fewer than 3 medium/high alerts stay on `GET /api/alerts` with `incidentId=null`
+
+```bash
+# token from the Week 1 login snippet above
+
+# realtime (does not wait for an incident)
+curl -N -H "Authorization: Bearer $TOKEN" 'http://127.0.0.1:8080/api/stream/alerts'
+
+# after a probe that scores >= 60
+curl -sS -H "Authorization: Bearer $TOKEN" 'http://127.0.0.1:8080/api/alerts'
+curl -sS -H "Authorization: Bearer $TOKEN" 'http://127.0.0.1:8080/api/incidents'
+curl -sS -H "Authorization: Bearer $TOKEN" 'http://127.0.0.1:8080/api/stats/overview'
+
+# triage
+curl -sS -X PATCH -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"status":"ACK"}' 'http://127.0.0.1:8080/api/incidents/1'
+
+# disable a rule; the enabled-rule cache is dropped so the next event uses the new row
+curl -sS -X PATCH -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"enabled":false}' 'http://127.0.0.1:8080/api/rules/1'
+```
+
+Kafka topic `security-alerts` gets one JSON message per new alert (`incidentId` is null until that alert is promoted).

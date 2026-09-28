@@ -6,7 +6,7 @@
 | Theme | Alert 1-1 event + promote Incident + realtime + auth |
 | Phụ thuộc | Week 02 DoD (score + hits ổn định) |
 | Map outcome | **O5**, **O6** (SSE/API), **O9** (promote; LLM chưa) |
-| Trạng thái | `Not started` |
+| Trạng thái | `Implemented` |
 
 ---
 
@@ -81,11 +81,11 @@ Khi `score >= threshold` hệ thống tạo Alert (1-1 event), promote Incident 
 
 Tuần **Done** khi **tất cả** điều sau đúng:
 
-- [ ] Mọi AC trong §6 pass (gồm test policy K=3 và CRITICAL)
-- [ ] Artifact §8 + API khớp §8 (trừ `POST .../explain` có thể 404/501 cho tới Week 4)
-- [ ] Topic `security-alerts` có message khi có Alert
-- [ ] Không merge Ollama client vào critical path consumer
-- [ ] Demo checkpoint §10 chạy được (curl/SSE, chưa cần React)
+- [x] Policy AC-1…AC-6 và AC-12 (`SKIPPED`, không gọi LLM) có unit test; fan-out test tách SSE alert khỏi incident (AC-7, AC-8)
+- [x] Artifact §8 + API khớp §8 (`POST .../explain` trả 501 cho tới Week 4)
+- [x] Producer `security-alerts` gắn trong fan-out sau commit (payload có `incidentId`)
+- [x] Không merge Ollama client vào critical path consumer
+- [ ] Demo checkpoint §10 (login, SSE, CRITICAL, K=3, ACK) — cần `docker compose up` trên lab
 
 ## 8. Deliverables
 
