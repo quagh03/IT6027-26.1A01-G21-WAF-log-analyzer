@@ -6,6 +6,7 @@ import com.huylq.it6027.backend.api.dto.IncidentTriageRequest;
 import com.huylq.it6027.backend.entity.enums.ExplanationStatus;
 import com.huylq.it6027.backend.entity.enums.TriageStatus;
 import com.huylq.it6027.backend.incident.IncidentTriageService;
+import com.huylq.it6027.backend.llm.IncidentExplainService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -28,10 +29,16 @@ public class IncidentController {
 
   private final SocReadService socReadService;
   private final IncidentTriageService incidentTriageService;
+  private final IncidentExplainService incidentExplainService;
 
-  public IncidentController(SocReadService socReadService, IncidentTriageService incidentTriageService) {
+  public IncidentController(
+      SocReadService socReadService,
+      IncidentTriageService incidentTriageService,
+      IncidentExplainService incidentExplainService
+  ) {
     this.socReadService = socReadService;
     this.incidentTriageService = incidentTriageService;
+    this.incidentExplainService = incidentExplainService;
   }
 
   @GetMapping
@@ -64,13 +71,11 @@ public class IncidentController {
   }
 
   /**
-   * Week 4 wires the async Ollama retry. Until then this stays 501 and does not call a model.
+   * Enqueues an async explain. Returns before Ollama responds. Profile off → SKIPPED, no HTTP call.
    */
   @PostMapping("/{id}/explain")
   public ResponseEntity<Map<String, String>> explain(@PathVariable Long id) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(Map.of(
-        "error", "not_implemented",
-        "message", "LLM explain is Week 4. New incidents stay SKIPPED while app.llm.enabled=false."
-    ));
+    ExplanationStatus status = incidentExplainService.request(id);
+    return ResponseEntity.accepted().body(Map.of("explanationStatus", status.name()));
   }
 }

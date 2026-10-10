@@ -1,5 +1,6 @@
 package com.huylq.it6027.backend.alert;
 
+import com.huylq.it6027.backend.config.LlmProperties;
 import com.huylq.it6027.backend.entity.Alert;
 import com.huylq.it6027.backend.entity.Application;
 import com.huylq.it6027.backend.entity.BaseEntity;
@@ -41,7 +42,7 @@ class AlertServiceTest {
 
   @BeforeEach
   void setUp() {
-    alertService = new AlertService(alertRepository, incidentManager, events);
+    alertService = new AlertService(alertRepository, incidentManager, events, LlmProperties.of(false));
     app = Application.builder().name("Juice Shop").riskThreshold(60).build();
     setId(app, 1L);
   }
@@ -59,7 +60,7 @@ class AlertServiceTest {
   void scoreAtThresholdCreatesExactlyOneAlert() {
     when(alertRepository.findByEventId(4L)).thenReturn(Optional.empty());
     when(alertRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
-    when(incidentManager.promote(any())).thenReturn(new IncidentManager.Promotion(null, false));
+    when(incidentManager.promote(any())).thenReturn(new IncidentManager.Promotion(null, false, false));
 
     alertService.openIfThreshold(event(60));
 

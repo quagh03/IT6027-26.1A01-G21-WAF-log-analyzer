@@ -1,0 +1,81 @@
+id,source,category,method,host,path,query,expected,note
+sqli-time-sleep,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=sleep(5),alert,"TIME weight 60, MEDIUM"
+sqli-time-pgsleep,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=pg_sleep(1),alert,"TIME weight 60, MEDIUM"
+sqli-time-benchmark,probe,SQLI,GET,juice.lab.local,/rest/products/search,"q=benchmark(1,1)",alert,"TIME weight 60, MEDIUM"
+sqli-time-waitfor,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=waitfor delay '0:0:1',alert,"TIME weight 60, MEDIUM"
+sqli-union-bool,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1 OR 1=1 UNION SELECT 1,alert,"BOOLEAN 40 + UNION 55, CRITICAL"
+sqli-string-union,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1 OR 'a'='a' UNION SELECT null,alert,"BOOLEAN-002 40 + UNION 55, CRITICAL"
+sqli-stacked-sleep,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1;select sleep(1),alert,"STACKED 50 + TIME 60, CRITICAL"
+sqli-comment-union,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1'-- UNION SELECT 1,alert,"COMMENT 35 + UNION 55, HIGH"
+xss-script-js,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<script>javascript:alert(1)</script>,alert,SCRIPT 55 + JSURI 50
+xss-encoded,probe,XSS,GET,juice.lab.local,/rest/products/search,q=%3cscript%3ealert(1)%3c/script%3e,alert,ENCODED 40 + SCRIPT 55
+xss-event-js,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<img src=x onerror=javascript:alert(1)>,alert,EVENT 45 + JSURI 50
+xss-svg,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<svg onload=alert(1)>,alert,SCRIPT 55 + EVENT 45
+xss-iframe,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<iframe src=javascript:alert(1)>,alert,SCRIPT 55 + JSURI 50
+xss-double,probe,XSS,GET,juice.lab.local,/rest/products/search,q=%253cscript%3ealert(1),alert,ENCODED 40 + SCRIPT 55
+xss-body,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<body onload=javascript:alert(1)>,alert,EVENT 45 + JSURI 50
+xss-vbscript,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<script src=vbscript:msgbox(1)>,alert,SCRIPT 55 + JSURI 50
+pt-dot-enc,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=../../etc/passwd%2e%2e%2f,alert,DOTDOT 45 + ENCODED 50 on raw
+pt-encoded-dot,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=..%2f..%2fetc/passwd%2e%2e%2f,alert,DOTDOT + ENCODED
+pt-backslash,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=..%5c..%5cwin.ini%2e%2e%5c,alert,BACKSLASH + ENCODED
+pt-double,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=../%252e%252e%252fetc/passwd,alert,DOTDOT + DOUBLE
+pt-mix,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=../../etc/passwd%2e%2e%5c,alert,DOTDOT + ENCODED backslash
+pt-query,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,q=../../../../etc/passwd%2e%2e/,alert,DOTDOT + ENCODED
+pt-win,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=..%5c..%5cwindows%5cwin.ini%2e%2e%5c,alert,BACKSLASH + ENCODED
+pt-double-enc,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=%252e%252e%252f..%2fetc/passwd,alert,DOUBLE + DOTDOT
+clean-apple,probe,CLEAN,GET,juice.lab.local,/rest/products/search,q=apple,clean,benign search
+clean-juice,probe,CLEAN,GET,juice.lab.local,/rest/products/search,q=juice,clean,benign search
+clean-numeric,probe,CLEAN,GET,juice.lab.local,/rest/products/search,q=1,clean,benign numeric query
+clean-home,probe,CLEAN,GET,juice.lab.local,/,,clean,Juice Shop home
+clean-shop-home,probe,CLEAN,GET,shop.lab.local,/,,clean,second app scope
+clean-product,probe,CLEAN,GET,juice.lab.local,/rest/products/1,,clean,product detail
+browse-01,browse,CLEAN,GET,juice.lab.local,/,,clean,benign browse
+browse-02,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=apple,clean,benign browse
+browse-03,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=juice,clean,benign browse
+browse-04,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=orange,clean,benign browse
+browse-05,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=banana,clean,benign browse
+browse-06,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=shirt,clean,benign browse
+browse-07,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=bike,clean,benign browse
+browse-08,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=carrot,clean,benign browse
+browse-09,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=green,clean,benign browse
+browse-10,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=water,clean,benign browse
+browse-11,browse,CLEAN,GET,juice.lab.local,/api/Challenges,,clean,benign browse
+browse-12,browse,CLEAN,GET,juice.lab.local,/rest/user/whoami,,clean,benign browse
+browse-13,browse,CLEAN,GET,juice.lab.local,/rest/admin/application-configuration,,clean,benign browse
+browse-14,browse,CLEAN,GET,juice.lab.local,/rest/languages,,clean,benign browse
+browse-15,browse,CLEAN,GET,juice.lab.local,/metrics,,clean,benign browse
+browse-16,browse,CLEAN,GET,juice.lab.local,/ftp,,clean,benign browse
+browse-17,browse,CLEAN,GET,juice.lab.local,/encryptionkeys,,clean,benign browse
+browse-18,browse,CLEAN,GET,juice.lab.local,/rest/captcha,,clean,benign browse
+browse-19,browse,CLEAN,GET,juice.lab.local,/rest/continue-code,,clean,benign browse
+browse-20,browse,CLEAN,GET,juice.lab.local,/snippets,,clean,benign browse
+browse-21,browse,CLEAN,GET,juice.lab.local,/rest/products/1,,clean,benign browse
+browse-22,browse,CLEAN,GET,juice.lab.local,/rest/products/2,,clean,benign browse
+browse-23,browse,CLEAN,GET,juice.lab.local,/rest/products/3,,clean,benign browse
+browse-24,browse,CLEAN,GET,juice.lab.local,/rest/products/4,,clean,benign browse
+browse-25,browse,CLEAN,GET,juice.lab.local,/rest/products/5,,clean,benign browse
+browse-26,browse,CLEAN,GET,juice.lab.local,/rest/products/6,,clean,benign browse
+browse-27,browse,CLEAN,GET,juice.lab.local,/rest/products/7,,clean,benign browse
+browse-28,browse,CLEAN,GET,juice.lab.local,/rest/products/8,,clean,benign browse
+browse-29,browse,CLEAN,GET,juice.lab.local,/rest/products/9,,clean,benign browse
+browse-30,browse,CLEAN,GET,juice.lab.local,/rest/products/10,,clean,benign browse
+browse-31,browse,CLEAN,GET,juice.lab.local,/assets/public/favicon_js.ico,,clean,benign browse
+browse-32,browse,CLEAN,GET,juice.lab.local,/main.js,,clean,benign browse
+browse-33,browse,CLEAN,GET,juice.lab.local,/polyfills.js,,clean,benign browse
+browse-34,browse,CLEAN,GET,juice.lab.local,/runtime.js,,clean,benign browse
+browse-35,browse,CLEAN,GET,juice.lab.local,/vendor.js,,clean,benign browse
+browse-36,browse,CLEAN,GET,juice.lab.local,/styles.css,,clean,benign browse
+browse-37,browse,CLEAN,GET,juice.lab.local,/3rdpartylicenses.txt,,clean,benign browse
+browse-38,browse,CLEAN,GET,juice.lab.local,/api/Quantitys,,clean,benign browse
+browse-39,browse,CLEAN,GET,juice.lab.local,/rest/deluxe-membership,,clean,benign browse
+browse-40,browse,CLEAN,GET,juice.lab.local,/rest/memories,,clean,benign browse
+browse-41,browse,CLEAN,GET,juice.lab.local,/api/Users,,clean,benign browse
+browse-42,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=laptop,clean,benign browse
+browse-43,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=mug,clean,benign browse
+browse-44,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=hat,clean,benign browse
+browse-45,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=book,clean,benign browse
+browse-46,browse,CLEAN,GET,juice.lab.local,/rest/products/search,q=pen,clean,benign browse
+browse-47,browse,CLEAN,GET,juice.lab.local,/video,,clean,benign browse
+browse-48,browse,CLEAN,GET,juice.lab.local,/promotion,,clean,benign browse
+browse-49,browse,CLEAN,GET,juice.lab.local,/rest/wallet/balance,,clean,benign browse
+browse-50,browse,CLEAN,GET,juice.lab.local,/rest/saveLoginIp,,clean,benign browse

@@ -6,7 +6,7 @@
 | Theme | Alert 1-1 event + promote Incident + realtime + auth |
 | Phụ thuộc | Week 02 DoD (score + hits ổn định) |
 | Map outcome | **O5**, **O6** (SSE/API), **O9** (promote; LLM chưa) |
-| Trạng thái | `Implemented` |
+| Trạng thái | `Done` |
 
 ---
 
@@ -85,7 +85,7 @@ Tuần **Done** khi **tất cả** điều sau đúng:
 - [x] Artifact §8 + API khớp §8 (`POST .../explain` trả 501 cho tới Week 4)
 - [x] Producer `security-alerts` gắn trong fan-out sau commit (payload có `incidentId`)
 - [x] Không merge Ollama client vào critical path consumer
-- [ ] Demo checkpoint §10 (login, SSE, CRITICAL, K=3, ACK) — cần `docker compose up` trên lab
+- [x] Demo checkpoint §10 (login, SSE, CRITICAL, K=3, ACK) — đã chạy trên lab 2026-10-10
 
 ## 8. Deliverables
 

@@ -1,0 +1,330 @@
+\documentclass[a4paper,11pt]{article}
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{vietnamese}
+\setmainfont{Times New Roman}
+\setsansfont{Helvetica Neue}
+\setmonofont{Menlo}[Scale=0.82]
+
+\usepackage[a4paper,margin=2.15cm]{geometry}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{amsmath}
+
+\setstretch{1.12}
+\setlist[itemize]{leftmargin=1.15em,itemsep=0.25em,topsep=0.35em}
+\setlist[enumerate]{leftmargin=1.25em,itemsep=0.3em,topsep=0.35em}
+\renewcommand{\arraystretch}{1.18}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\captionsetup{font=small,labelfont=bf,skip=6pt}
+\hypersetup{colorlinks=true,linkcolor=black,urlcolor=blue!50!black,citecolor=black}
+
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.55em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{1.15em}{0.45em}
+\titlespacing*{\subsection}{0pt}{0.9em}{0.35em}
+
+\pagestyle{plain}
+
+\title{\textbf{Báo cáo tuần 4}\\[0.35em]
+\large Chi tiết giải pháp đề xuất\\
+\large WAF Log Analyzer}
+\author{Nhóm G21 \quad IT6027 \quad lớp 26.1A01}
+\date{2 tháng 10 năm 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Nguồn & \texttt{solution-design} v1.6, \texttt{application.yaml}, \texttt{RiskScorer}, \texttt{IncidentManager}, seed rule, probe \\
+Việc tuần này & Mô tả giải pháp theo khối, tham số, ví dụ số, và chỗ đứng so với bài cùng hướng \\
+Số liệu & Coverage offline và weight rule \textbf{đã có trong repo}. Replay $10\,000$ dòng \textbf{chưa đo} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.6em}
+\noindent
+Tuần 3 hỏi coverage trên log có lệch quá $15$ điểm so với held-out hay không (RQ1), số incident có giảm ít nhất $15\%$ so với một alert một incident hay không (RQ2), và $p95$ tới SSE có dưới $5$ giây trên luồng lớn hay không (RQ3). Báo cáo này không trả số cho ba câu đó. Báo cáo này mô tả giải pháp dùng để trả, ở mức đủ để dựng lại cùng tham số.
+
+\noindent
+Giải pháp là log analyzer đứng sau Nginx. Detector là $14$ regex đã qua cổng precision $\geq 0{,}80$ và FPR $\leq 0{,}02$. Điểm $0$--$100$ quyết định alert. Incident chỉ mở theo IMMEDIATE hoặc AGGREGATE. LLM đọc incident sau khi transaction ingest đã commit và không được đổi điểm.
+
+\section{Bài toán từng khối phải đóng}
+
+\begin{table}[ht]
+\centering
+\caption{Khối giải pháp, việc không làm, và câu hỏi tuần 3.}
+\label{tab:blocks}
+\small
+\begin{tabularx}{\linewidth}{@{}p{2.5cm}Y Y p{1.7cm}@{}}
+\toprule
+Khối & Việc làm & Việc không làm & Câu hỏi \\
+\midrule
+Rule engine & Khớp \texttt{query} hoặc \texttt{path}; lưu hit, weight, evidence & Không gọi LLM, không chặn request & RQ1 \\
+Scoring & Cộng weight, bonus tần suất và status, cắt $100$ & Không học lại trọng số & RQ1, ngưỡng RQ2 \\
+Alert & Một alert mỗi event khi score $\geq$ ngưỡng app & Không mở incident & Mẫu số RQ2 \\
+Incident & Gộp theo \texttt{(app\_id, client\_ip)} trong $5$ phút & Không giải thích, không đổi score & RQ2 \\
+SSE + SOC & Đẩy alert, incident; triage ACK/CLOSED & Trình duyệt không đọc Kafka & RQ3 \\
+Ollama & Giải thích từ tối đa $5$ alert đã có hit & Không nằm trên thread Kafka & Ngoài đồng hồ RQ3 \\
+Probe lab & $24$ payload nhãn alert và $50$ request sạch & Không đo replay $10\,000$ dòng & Tầng S \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Luồng một request và tham số đã khóa}
+
+\begin{quote}
+\small
+Nginx JSON $\rightarrow$ Filebeat $\rightarrow$ Kafka \texttt{raw-web-logs} $\rightarrow$ \texttt{WebEvent}
+$\rightarrow$ $14$ rule (cache Redis) $\rightarrow$ \texttt{DetectionHit}
+$\rightarrow$ score, cửa sổ $5$ phút theo \texttt{client\_ip}
+$\rightarrow$ Alert nếu score $\geq 60$
+$\rightarrow$ \texttt{IncidentManager} ($W{=}5$ phút, $K{=}3$)
+$\rightarrow$ topic \texttt{security-alerts} và SSE
+$\rightarrow$ sau commit, \texttt{@Async}, Ollama chỉ khi incident vừa tạo và profile \texttt{llm} bật.
+\end{quote}
+
+\begin{table}[ht]
+\centering
+\caption{Tham số trong \texttt{application.yaml} và schema app.}
+\label{tab:params}
+\small
+\begin{tabularx}{\linewidth}{@{}p{4.3cm}p{3.4cm}Y@{}}
+\toprule
+Tham số & Giá trị & Hệ quả \\
+\midrule
+\texttt{scoring.window-minutes} & $5$ & \texttt{freq\_bonus} nhìn hit cùng IP trong $5$ phút \\
+\texttt{incident.window-minutes} & $5$ & Incident OPEN cũ hơn cửa sổ bị đóng trước khi promote \\
+Ngưỡng gom $K$ & $3$ & Dưới $3$ alert MEDIUM/HIGH cùng khoá thì chưa có incident \\
+\texttt{risk\_threshold} & $60$ & Score $59$ không thành alert \\
+Severity & $<40$ LOW, $40$--$69$ MEDIUM, $70$--$84$ HIGH, $\geq 85$ CRITICAL & Chỉ CRITICAL đi nhánh IMMEDIATE \\
+\texttt{llm.enabled} & false mặc định & \texttt{SKIPPED}, không HTTP \\
+\texttt{llm.model} & \texttt{llama3.2} & Chỉ khi bật profile \\
+\texttt{llm.timeout-seconds} & $20$ & Quá hạn thì FAILED; incident vẫn xem được \\
+\texttt{llm.max-alerts} & $5$ & Prompt nhận tối đa $5$ alert mới nhất \\
+JWT access & $480$ phút & Một ca demo không login lại giữa chừng \\
+Redis rule đang bật & TTL $10$ phút, xóa key khi sửa rule & Weight mới có hiệu lực không cần đợi hết TTL \\
+Kafka \texttt{acks} & $1$ & Leader ghi xong là producer trả \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+TTL $10$ phút là lưới an toàn. Cache xóa key Redis khi admin sửa rule, nên event sau dùng pattern mới. Cột \texttt{detection\_hits.weight} là bản sao lúc khớp; sửa weight sau không viết lại hit cũ.
+
+\section{Giải pháp phát hiện}
+
+\subsection{Mười bốn rule và ngưỡng $60$}
+
+Seed rule ghi \texttt{source = AI\_MINED}, phiên bản \texttt{1.0.0}. Bốn rule path traversal soi \texttt{path}. Sáu rule SQLi và bốn rule XSS soi \texttt{query}. Không có rule command injection (HttpParams có $89$ mẫu cmdi) và không có rule đọc POST body.
+
+\begin{table}[ht]
+\centering
+\caption{Weight và khả năng tự thành alert trên HTTP $200$, khi cửa sổ chưa có hit khác.}
+\label{tab:weights}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Nhóm rule & Weight & Trên HTTP $200$ \\
+\midrule
+SQLI-TIME-001 & $60$ & Đạt ngưỡng, severity MEDIUM \\
+SQLI-UNION-001, PT-DOUBLE-001, XSS-SCRIPT-001 & $55$ & Chưa alert \\
+SQLI-STACKED-001, PT-ENCODED-001, XSS-JSURI-001 & $50$ & Chưa alert \\
+PT-BACKSLASH-001, PT-DOTDOT-001, XSS-EVENT-001 & $45$ & Chưa alert \\
+SQLI-BOOLEAN-001/002, XSS-ENCODED-001 & $40$ & Chưa alert \\
+SQLI-COMMENT-001 & $35$ & Chưa alert \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Chỉ TIME-001 tự tạo alert khi response là $200$ và chưa có hit khác. UNION, thẻ script, hay \texttt{../} cần thêm hit cùng request, hoặc \texttt{status\_bonus}, hoặc \texttt{freq\_bonus}, mới qua $60$. Khớp rule yếu vẫn được ghi hit, nhưng chưa thành việc SOC. Khác một bộ chữ ký ``khớp là chặn'' của WAF inline.
+
+Coverage CSV đã đo, gắn với bộ weight này chứ không phải số mới: path traversal held-out $48{,}00\%$ trên $175$ và adversarial $51{,}36\%$ trên $808$; SQLI $50{,}52\%$ trên $6\,598$ và $49{,}58\%$ trên $32\,851$; XSS $68{,}12\%$ trên $229$ và $69{,}85\%$ trên $1\,111$. FPR benign cả ba category bằng $0$. \texttt{PT-DOUBLE-001} nặng $55$ điểm nhưng recall held-out $0/175$. Trọng số cao không đồng nghĩa phủ nhiều mẫu. Rule được giữ vì adversarial có $2/808$ hit và precision trên benign vẫn $1$. RQ1 phải tách coverage khỏi trọng số.
+
+\subsection{Công thức điểm}
+
+\begin{align*}
+\mathrm{base} &= \min\bigl(100,\ \textstyle\sum \mathrm{weight}\bigr),\\
+\mathrm{freq\_bonus} &=
+\begin{cases}
+0 & \text{nếu số hit cùng IP trong $5$ phút $< 2$},\\
+\min\bigl(20,\ 2(\mathrm{count}-1)\bigr) & \text{ngược lại},
+\end{cases}\\
+\mathrm{status\_bonus} &= 5 \text{ nếu status}\in\{403,404,500\} \text{ và base}>0,\\
+\mathrm{score} &= \min(100,\ \mathrm{base}+\mathrm{freq\_bonus}+\mathrm{status\_bonus}).
+\end{align*}
+
+\texttt{freq\_bonus} đếm dòng hit, không đếm request. Trần $20$ đạt khi có $11$ hit trong cửa sổ, vì $2\times(11-1)=20$. Comment SQL weight $35$, dù trần tần suất và status, tối đa $35+20+5=60$, đúng ngưỡng MEDIUM, không thành CRITICAL.
+
+\begin{table}[ht]
+\centering
+\caption{Bốn tình huống tính theo \texttt{RiskScorer}.}
+\label{tab:examples}
+\small
+\begin{tabularx}{\linewidth}{@{}Ycccc@{}}
+\toprule
+Tình huống & Score & Alert & Severity & Việc SOC \\
+\midrule
+\texttt{q=apple}, không hit, HTTP $200$ & $0$ & Không & LOW & Không incident \\
+Một hit TIME-001, HTTP $200$, một hit trong cửa sổ & $60$ & Có & MEDIUM & Chưa incident nếu là alert MEDIUM thứ nhất hoặc thứ hai \\
+TIME-001 và UNION-001 cùng request & $100$ & Có & CRITICAL & IMMEDIATE \\
+Ba TIME-001 cùng IP trong $5$ phút & $60$, $62$, $64$ & $3$ & MEDIUM & Lần $3$ đủ $K{=}3$, một incident AGGREGATE \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Ba request TIME cùng IP: baseline một-một ra $3$ incident, giải pháp ra $1$. Mức giảm $(3-1)/3 = 66{,}7\%$, trên mốc $15\%$ của RQ2, khi detector đúng weight $60$ và ba request nằm trong một cửa sổ. Một TIME từ một IP lạ chỉ còn alert, \texttt{incident\_id} null. Đó là $K{=}3$, không phải sót promote.
+
+UNION-001 trên HTTP $404$ thành $55+5=60$, MEDIUM. Cùng payload trên HTTP $200$ vẫn $55$, không alert. Giải pháp nhạy với mã HTTP của Juice Shop, không chỉ với chuỗi payload.
+
+\section{Giải pháp Incident}
+
+\texttt{IncidentManager.promote} chạy sau khi alert đã có. LOW bỏ qua. Alert đã gắn incident thì không xét lại.
+
+\begin{enumerate}
+\item Tìm incident \texttt{OPEN} cùng \texttt{(app\_id, client\_ip)}.
+\item Nếu \texttt{opened\_at} cũ hơn $5$ phút, đóng incident đó và ghi work note, coi như không còn incident mở.
+\item Nếu còn incident mở trong cửa sổ, gắn alert vào. Tăng \texttt{alert\_count}, severity lấy max, score lấy max. Không tạo incident mới và không gọi explain lại.
+\item Nếu chưa có incident mở và severity là CRITICAL, tạo incident \texttt{promote\_reason = IMMEDIATE}.
+\item Nếu MEDIUM hoặc HIGH, đếm alert cùng khoá, chưa gắn incident, trong $5$ phút. Đủ $3$ thì tạo \texttt{AGGREGATE} và gắn cả nhóm. Chưa đủ thì alert đứng một mình.
+\end{enumerate}
+
+Explain chỉ xếp hàng khi incident vừa được chèn. Gắn thêm alert vào incident cũ không gọi Ollama. Work note nguồn \texttt{SYSTEM} ghi lúc promote và lúc gắn thêm, nên UI còn vết khi model tắt.
+
+Burst đã tính ở tuần 3 vẫn khớp luật này nếu severity sau scoring đúng khoảng: $6$ CRITICAL cùng IP thành $1$ incident IMMEDIATE, $9$ MEDIUM thành $3$ incident AGGREGATE, $3$ HIGH thành $1$. Tổng $18$ alert thành $5$ incident, giảm $72{,}2\%$. Với bộ weight hiện tại, một payload TIME đơn không vào nhóm CRITICAL. Sáu CRITICAL chỉ xảy ra khi một request ăn nhiều rule (TIME $+$ UNION $= 100$) hoặc khi tổng weight và bonus chạm $85$. RQ2 phải dùng severity sau scoring, không dùng nhãn ``payload nặng'' thay cho score.
+
+\section{Thời gian thực, mặt SOC, và LLM}
+
+Trình duyệt không subscribe Kafka. Luồng alert đẩy cả sự kiện chưa đủ $K$. Luồng incident đẩy incident mới, alert được gắn, và đổi trạng thái giải thích. Hai đường SSE tương ứng là alerts và incidents dưới \texttt{/api/stream}.
+
+Dashboard React có đăng nhập JWT, overview lọc \texttt{app\_id} (timeline, top loại tấn công, top IP, top path), danh sách alert, danh sách incident, và chi tiết incident. Chi tiết hiện từng hit gồm mã rule, category, weight, evidence, cùng ba thao tác: xác nhận (\texttt{ACK}), đóng (\texttt{CLOSED}), giải thích lại. Dòng cố định trên khối giải thích: ``AI hỗ trợ, có thể không chính xác.''
+
+Đồng hồ RQ3 dừng lúc event SSE alert tới. Timeout Ollama $20$ giây dài hơn hạn $5$ giây. Cộng hai đồng hồ thì mọi ca bật LLM đều trượt RQ3 dù detect đã xong. Thiếu JWT thì \texttt{GET /api/incidents} trả $401$. Auth không đổi công thức điểm.
+
+\begin{table}[ht]
+\centering
+\caption{Khối Ollama, mặc định tắt.}
+\label{tab:llm}
+\small
+\begin{tabularx}{\linewidth}{@{}p{3.3cm}Y@{}}
+\toprule
+Việc & Cách làm \\
+\midrule
+Khi nào gọi & Incident mới tạo, sau \texttt{AFTER\_COMMIT}, thread \texttt{@Async} \\
+Khi tắt & \texttt{SKIPPED}, không HTTP, alert và incident vẫn hiện \\
+Khi lỗi hoặc quá $20$ giây & \texttt{FAILED}, lỗi cắt $500$ ký tự, consumer không nhận exception \\
+Retry & \texttt{POST /api/incidents/\{id\}/explain} trả $202$, không giữ connection chờ model \\
+Prompt & Tối đa $5$ alert. Title $180$ ký tự, path $180$, query $240$, evidence $180$, IP $64$ \\
+Đầu ra & Cắt $4\,000$ ký tự. \texttt{CONFIDENCE: LOW|MEDIUM|HIGH}; thiếu dòng thì MEDIUM \\
+Việc model không làm & Không ghi score, không sửa rule, không đóng incident \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Dữ liệu demo tầng S}
+
+\begin{table}[ht]
+\centering
+\caption{Hai lệnh đều đi qua Nginx, không gửi POST body.}
+\label{tab:probes}
+\small
+\begin{tabularx}{\linewidth}{@{}p{4.2cm}p{2.4cm}Y@{}}
+\toprule
+Lệnh & Số & Nhãn \\
+\midrule
+\texttt{scenarios.yaml} + \texttt{run.sh} & $30$ scenario & $24$ \texttt{expected: alert} ($8$ SQLi, $8$ XSS, $8$ path traversal), $6$ \texttt{expected: clean} \\
+\texttt{browse\_clean.sh} & $50$ path & Trang chủ, search hợp lệ, whoami, $10$ sản phẩm, asset tĩnh \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+$24$ probe nhãn alert không đồng nghĩa $24$ alert sau scoring. Payload chỉ khớp rule weight $35$--$55$ trên HTTP $200$ nằm dưới ngưỡng. Ground truth kỳ vọng và alert thực tế là hai cột; tuần đo mới đối chiếu. Runner ghi rõ chỉ probe Juice Shop tự host. Tầng L của tuần 3 ($10\,000$ dòng, $80\%$ benign, $20\%$ tấn công, $20$ sự kiện/giây) không nằm trong runner này. Runner là tầng S, sát thiết kế khoảng $50$ request sạch và $30$ probe.
+
+\section{Chỗ đứng so với hướng tương tự}
+
+\begin{table}[ht]
+\centering
+\caption{Cùng một việc, hai cách làm.}
+\label{tab:cmp}
+\small
+\begin{tabularx}{\linewidth}{@{}p{3.3cm}Y Y@{}}
+\toprule
+Hướng & Cách của họ & Cách của giải pháp này \\
+\midrule
+WAFBooster \cite{wafbooster} & True rejection $21\% \rightarrow 96\%$ trên $8$ WAF; shadow RNN vá chữ ký inline & $14$ regex Java, weight $35$--$60$, mine offline, không đo true rejection \\
+GenXSS \cite{genxss} & Khoảng $15$ SecRule, khoảng $86\%$ bypass XSS, GPT-4o viết rule & Ba category, LLM online chỉ giải thích, \texttt{llama3.2}, timeout $20$ giây \\
+ML-WAF trên CSIC \cite{csic} & Một nhãn cho cả request, khoảng $61\,000$ dòng không timestamp & Hit có mã rule. Cửa sổ $K$ và $W$ cần thời gian; lab Juice có sẵn trên log Nginx \\
+SIEM một alert một case & Mỗi cảnh báo là một việc & $3$ alert MEDIUM cùng IP trong $5$ phút thành $1$ incident \\
+LLM triage mọi alert & Hỏi model trên alert đơn & Model chạy khi incident vừa tạo. Hai alert chưa đủ $K$ không phát sinh một lần gọi \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Giải pháp chấp nhận kém hơn bài báo inline ở chỗ không chặn request, không thấy body, và coverage SQLi held-out $50{,}52\%$ không phải accuracy phân loại trên CSV. Đổi lại, mỗi hit truy được về mã rule và evidence, và đồng hồ detect không chứa thời gian model.
+
+\section{Cơ chế nào sẽ bị đo}
+
+Chưa có kết quả chạy RQ1--RQ3 ở đây. Bảng dưới chỉ nối câu hỏi với cơ chế.
+
+\begin{table}[ht]
+\centering
+\caption{Câu hỏi tuần 3 và tham số sẽ bị đối chiếu.}
+\label{tab:rq}
+\small
+\begin{tabularx}{\linewidth}{@{}p{1.5cm}Y Y@{}}
+\toprule
+Câu hỏi & Cơ chế & Tiêu chí đã chốt \\
+\midrule
+RQ1 & $14$ regex trên access log, không đổi weight giữa chừng & SQLI $\geq 35{,}52\%$, XSS $\geq 53{,}12\%$, PT $\geq 33{,}00\%$, FPR $\leq 2\%$ \\
+RQ2 & $K{=}3$, $W{=}5$, ngưỡng $60$, CRITICAL $\geq 85$ & Giảm incident $\geq 15\%$ so với đếm một-một; CRITICAL bỏ sót $= 0$ \\
+RQ3 & Kafka $\rightarrow$ score $\rightarrow$ alert $\rightarrow$ SSE; LLM sau commit & $p95 < 5$ giây tại $\geq 20$ sự kiện/giây, trên $\geq 10\,000$ dòng \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Nếu ba probe TIME cùng IP ra $3$ alert và $1$ incident, mức giảm trên burst đó là $66{,}7\%$. Nếu nhiều probe trong số $24$ nhãn alert có score dưới $60$, mẫu số RQ2 nhỏ đi và kết luận phải ghi số alert thực. Nếu $p95$ đo tới \texttt{READY} của Ollama, số đó không thuộc RQ3.
+
+\section{Kết luận}
+
+Giải pháp đề xuất là pipeline out-of-band với tham số đã khóa: $14$ rule \texttt{AI\_MINED}, điểm cắt $100$, ngưỡng $60$, bonus tần suất tối đa $20$, bonus status $5$, incident $K{=}3$ trong $5$ phút, SSE tách khỏi Ollama. Chỉ SQLI-TIME-001 (weight $60$) tự tạo alert trên HTTP $200$. Các rule $35$--$55$ cần hit cộng dồn hoặc bonus. LLM \texttt{llama3.2} timeout $20$ giây, tối đa $5$ alert, cắt thân $4\,000$ ký tự, tắt thì \texttt{SKIPPED}. Demo tầng S có $30$ scenario ($24$ kỳ vọng alert, $6$ sạch) và $50$ request \texttt{browse\_clean}.
+
+WAFBooster và GenXSS không được lấy làm chỉ tiêu $96\%$ hay khoảng $86\%$. Trên ba request TIME cùng IP trong $5$ phút, giải pháp ra một incident thay vì ba. Coverage offline và các mức giảm $66{,}7\%$ cùng $72{,}2\%$ là mốc thiết kế. Bảng FP/FN trên Juice và replay $10\,000$ dòng thuộc lần đo sau.
+
+\begin{thebibliography}{9}
+\bibitem{csic}
+HTTP dataset CSIC 2010.
+Viện An ninh Thông tin, CSIC, 2010.
+Khoảng $36\,000$ request thường và $25\,000$ request bất thường.
+
+\bibitem{wafbooster}
+Wu và cộng sự.
+WAFBooster.
+arXiv:2501.14008, 2025.
+True rejection $21\%$ lên $96\%$ trên $8$ WAF.
+
+\bibitem{genxss}
+Babaey và Ravindran.
+GenXSS.
+arXiv:2504.08176, 2025.
+Khoảng $15$ rule ModSecurity, khoảng $86\%$ bypass XSS.
+
+\bibitem{design}
+Nhóm G21.
+Solution design v1.6, seed rule V2, và báo cáo tuần 3.
+Tham số $K{=}3$, $W{=}5$ phút, ngưỡng $60$, coverage held-out.
+\end{thebibliography}
+
+\end{document}

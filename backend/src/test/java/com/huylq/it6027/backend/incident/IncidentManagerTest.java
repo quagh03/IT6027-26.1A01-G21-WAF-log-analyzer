@@ -176,7 +176,7 @@ class IncidentManagerTest {
         incidentRepository,
         workNoteRepository,
         new IncidentProperties(5, 3),
-        new LlmProperties(llmEnabled),
+        LlmProperties.of(llmEnabled),
         Clock.fixed(NOW, ZoneOffset.UTC)
     );
   }

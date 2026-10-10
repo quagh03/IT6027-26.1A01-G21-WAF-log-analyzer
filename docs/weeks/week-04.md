@@ -6,7 +6,7 @@
 | Theme | React dashboard + probes có nhãn + Ollama async |
 | Phụ thuộc | Week 03 DoD (API + SSE + Incident) |
 | Map outcome | **O6**, **O7**, **O9** |
-| Trạng thái | `Not started` |
+| Trạng thái | `Implemented` |
 
 ---
 
@@ -85,11 +85,11 @@ Chạy Compose (+ profile `llm`), một lệnh probe, thấy timeline/alert/inci
 
 Tuần **Done** khi **tất cả** điều sau đúng:
 
-- [ ] Mọi AC trong §6 pass trên lab (LLM: ít nhất một trong READY hoặc FAILED/SKIPPED đúng hành vi)
-- [ ] Artifact §8 có runner một lệnh + frontend container hoặc `npm` ghi trong README
+- [ ] Mọi AC trong §6 pass trên lab (LLM: ít nhất một trong READY hoặc FAILED/SKIPPED đúng hành vi) — cần `docker compose up`
+- [x] Artifact §8 có runner một lệnh + frontend (`frontend/`, profile `ui`) ghi trong README
 - [ ] Demo flow §2.3 bước 1–6 chạy được (bước 5 được phép FAILED nếu máy không kéo được model — phải show status)
-- [ ] LLM không nằm trên Kafka consumer thread
-- [ ] Không thêm DVWA / cloud LLM / export PDF
+- [x] LLM không nằm trên Kafka consumer thread (AFTER_COMMIT + `@Async`; HTTP ngoài transaction)
+- [x] Không thêm DVWA / cloud LLM / export PDF
 
 ## 8. Deliverables
 

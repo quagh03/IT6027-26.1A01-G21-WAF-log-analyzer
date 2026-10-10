@@ -1,36 +1,248 @@
-# Week 1 skeleton — smoke requests only.
-# Full Attack Scenario Runner (~30 probes + ground truth) lands in Week 4.
-#
-# Ethics: only target the local lab (Juice Shop via Nginx on this machine).
-# Do not point these scripts at third-party hosts.
+# Week 4 attack scenarios. Ethics: local lab only (Juice Shop via Nginx).
+# Payloads sit on the query string so they appear in the Nginx access log.
+# expected=alert means score should reach the app threshold (default 60).
 
 base_url: http://127.0.0.1
 default_host: juice.lab.local
 
 scenarios:
-  - id: smoke-home
+  - id: sqli-time-sleep
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=sleep(5)"
+    expected: alert
+    note: TIME weight 60, MEDIUM
+
+  - id: sqli-time-pgsleep
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=pg_sleep(1)"
+    expected: alert
+    note: TIME weight 60, MEDIUM
+
+  - id: sqli-time-benchmark
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=benchmark(1,1)"
+    expected: alert
+    note: TIME weight 60, MEDIUM
+
+  - id: sqli-time-waitfor
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=waitfor delay '0:0:1'"
+    expected: alert
+    note: TIME weight 60, MEDIUM
+
+  - id: sqli-union-bool
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=1 OR 1=1 UNION SELECT 1"
+    expected: alert
+    note: BOOLEAN 40 + UNION 55, CRITICAL
+
+  - id: sqli-string-union
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=1 OR 'a'='a' UNION SELECT null"
+    expected: alert
+    note: BOOLEAN-002 40 + UNION 55, CRITICAL
+
+  - id: sqli-stacked-sleep
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=1;select sleep(1)"
+    expected: alert
+    note: STACKED 50 + TIME 60, CRITICAL
+
+  - id: sqli-comment-union
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=1'-- UNION SELECT 1"
+    expected: alert
+    note: COMMENT 35 + UNION 55, HIGH
+
+  - id: xss-script-js
+    category: XSS
+    method: GET
+    path: /rest/products/search
+    query: "q=<script>javascript:alert(1)</script>"
+    expected: alert
+    note: SCRIPT 55 + JSURI 50
+
+  - id: xss-encoded
+    category: XSS
+    method: GET
+    path: /rest/products/search
+    query: "q=%3cscript%3ealert(1)%3c/script%3e"
+    expected: alert
+    note: ENCODED 40 + SCRIPT 55
+
+  - id: xss-event-js
+    category: XSS
+    method: GET
+    path: /rest/products/search
+    query: "q=<img src=x onerror=javascript:alert(1)>"
+    expected: alert
+    note: EVENT 45 + JSURI 50
+
+  - id: xss-svg
+    category: XSS
+    method: GET
+    path: /rest/products/search
+    query: "q=<svg onload=alert(1)>"
+    expected: alert
+    note: SCRIPT 55 + EVENT 45
+
+  - id: xss-iframe
+    category: XSS
+    method: GET
+    path: /rest/products/search
+    query: "q=<iframe src=javascript:alert(1)>"
+    expected: alert
+    note: SCRIPT 55 + JSURI 50
+
+  - id: xss-double
+    category: XSS
+    method: GET
+    path: /rest/products/search
+    query: "q=%253cscript%3ealert(1)"
+    expected: alert
+    note: ENCODED 40 + SCRIPT 55
+
+  - id: xss-body
+    category: XSS
+    method: GET
+    path: /rest/products/search
+    query: "q=<body onload=javascript:alert(1)>"
+    expected: alert
+    note: EVENT 45 + JSURI 50
+
+  - id: xss-vbscript
+    category: XSS
+    method: GET
+    path: /rest/products/search
+    query: "q=<script src=vbscript:msgbox(1)>"
+    expected: alert
+    note: SCRIPT 55 + JSURI 50
+
+  - id: pt-dot-enc
+    category: PATH_TRAVERSAL
+    method: GET
+    path: /ftp
+    query: "file=../../etc/passwd%2e%2e%2f"
+    expected: alert
+    note: DOTDOT 45 + ENCODED 50 on raw
+
+  - id: pt-encoded-dot
+    category: PATH_TRAVERSAL
+    method: GET
+    path: /ftp
+    query: "file=..%2f..%2fetc/passwd%2e%2e%2f"
+    expected: alert
+    note: DOTDOT + ENCODED
+
+  - id: pt-backslash
+    category: PATH_TRAVERSAL
+    method: GET
+    path: /ftp
+    query: "file=..%5c..%5cwin.ini%2e%2e%5c"
+    expected: alert
+    note: BACKSLASH + ENCODED
+
+  - id: pt-double
+    category: PATH_TRAVERSAL
+    method: GET
+    path: /ftp
+    query: "file=../%252e%252e%252fetc/passwd"
+    expected: alert
+    note: DOTDOT + DOUBLE
+
+  - id: pt-mix
+    category: PATH_TRAVERSAL
+    method: GET
+    path: /ftp
+    query: "file=../../etc/passwd%2e%2e%5c"
+    expected: alert
+    note: DOTDOT + ENCODED backslash
+
+  - id: pt-query
+    category: PATH_TRAVERSAL
+    method: GET
+    path: /ftp
+    query: "q=../../../../etc/passwd%2e%2e/"
+    expected: alert
+    note: DOTDOT + ENCODED
+
+  - id: pt-win
+    category: PATH_TRAVERSAL
+    method: GET
+    path: /ftp
+    query: "file=..%5c..%5cwindows%5cwin.ini%2e%2e%5c"
+    expected: alert
+    note: BACKSLASH + ENCODED
+
+  - id: pt-double-enc
+    category: PATH_TRAVERSAL
+    method: GET
+    path: /ftp
+    query: "file=%252e%252e%252f..%2fetc/passwd"
+    expected: alert
+    note: DOUBLE + DOTDOT
+
+  - id: clean-apple
+    category: CLEAN
+    method: GET
+    path: /rest/products/search
+    query: "q=apple"
+    expected: clean
+    note: benign search
+
+  - id: clean-juice
+    category: CLEAN
+    method: GET
+    path: /rest/products/search
+    query: "q=juice"
+    expected: clean
+    note: benign search
+
+  - id: clean-numeric
+    category: CLEAN
+    method: GET
+    path: /rest/products/search
+    query: "q=1"
+    expected: clean
+    note: benign numeric query
+
+  - id: clean-home
     category: CLEAN
     method: GET
     path: /
     query: ""
-    host: juice.lab.local
     expected: clean
-    note: Juice Shop home via juice.lab.local
+    note: Juice Shop home
 
-  - id: smoke-shop-home
+  - id: clean-shop-home
     category: CLEAN
     method: GET
     path: /
     query: ""
     host: shop.lab.local
     expected: clean
-    note: Same upstream, second app scope (AC-3)
+    note: second app scope
 
-  - id: smoke-search
+  - id: clean-product
     category: CLEAN
     method: GET
-    path: /rest/products/search
-    query: q=apple
-    host: juice.lab.local
+    path: /rest/products/1
+    query: ""
     expected: clean
-    note: Benign query to generate a WebEvent with path+query
+    note: product detail

@@ -11,6 +11,9 @@ public interface WebEventRepository extends JpaRepository<WebEvent, Long>, WebEv
 
   Optional<WebEvent> findByRawRef(String rawRef);
 
+  @Query("SELECT COUNT(e) FROM WebEvent e WHERE (:appId IS NULL OR e.application.id = :appId)")
+  long countFiltered(@Param("appId") Long appId);
+
   @Query("SELECT e FROM WebEvent e JOIN FETCH e.application WHERE e.id = :id")
   Optional<WebEvent> findByIdWithApplication(@Param("id") Long id);
 }

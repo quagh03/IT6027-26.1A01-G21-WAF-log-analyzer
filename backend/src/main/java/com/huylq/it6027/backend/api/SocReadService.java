@@ -6,7 +6,9 @@ import com.huylq.it6027.backend.api.dto.ApplicationResponse;
 import com.huylq.it6027.backend.api.dto.DetectionHitResponse;
 import com.huylq.it6027.backend.api.dto.IncidentDetailResponse;
 import com.huylq.it6027.backend.api.dto.IncidentResponse;
+import com.huylq.it6027.backend.api.dto.NamedCount;
 import com.huylq.it6027.backend.api.dto.StatsOverviewResponse;
+import com.huylq.it6027.backend.api.dto.TimelinePoint;
 import com.huylq.it6027.backend.entity.Alert;
 import com.huylq.it6027.backend.entity.enums.ExplanationStatus;
 import com.huylq.it6027.backend.entity.enums.Severity;
@@ -21,7 +23,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,8 +56,11 @@ public class SocReadService {
   }
 
   @Transactional(readOnly = true)
-  public List<AlertResponse> listAlerts() {
-    return alertRepository.findAllWithRefs().stream().map(SocResponses::alert).toList();
+  public List<AlertResponse> listAlerts(Long appId) {
+    List<Alert> alerts = appId == null
+        ? alertRepository.findAllWithRefs()
+        : alertRepository.findForStats(appId);
+    return alerts.stream().map(SocResponses::alert).toList();
   }
 
   @Transactional(readOnly = true)
@@ -87,20 +97,59 @@ public class SocReadService {
   }
 
   @Transactional(readOnly = true)
-  public StatsOverviewResponse overview() {
+  public StatsOverviewResponse overview(Long appId) {
+    List<Alert> alerts = alertRepository.findForStats(appId);
     Map<Severity, Long> bySeverity = new EnumMap<>(Severity.class);
     for (Severity severity : Severity.values()) {
       bySeverity.put(severity, 0L);
     }
-    for (Object[] row : alertRepository.countGroupedBySeverity()) {
-      bySeverity.put((Severity) row[0], (Long) row[1]);
+    Map<String, Long> hours = new LinkedHashMap<>();
+    Map<String, Long> ips = new LinkedHashMap<>();
+    Map<String, Long> paths = new LinkedHashMap<>();
+    for (Alert alert : alerts) {
+      if (alert.getSeverity() != null) {
+        bySeverity.merge(alert.getSeverity(), 1L, Long::sum);
+      }
+      if (alert.getCreatedAt() != null) {
+        String bucket = DateTimeFormatter.ISO_INSTANT.format(
+            alert.getCreatedAt().truncatedTo(ChronoUnit.HOURS)
+        );
+        hours.merge(bucket, 1L, Long::sum);
+      }
+      if (alert.getClientIp() != null) {
+        ips.merge(alert.getClientIp(), 1L, Long::sum);
+      }
+      if (alert.getEvent() != null && alert.getEvent().getPath() != null) {
+        paths.merge(alert.getEvent().getPath(), 1L, Long::sum);
+      }
     }
+    List<NamedCount> attackTypes = new ArrayList<>();
+    for (Object[] row : detectionHitRepository.countByCategory(appId)) {
+      attackTypes.add(new NamedCount(String.valueOf(row[0]), ((Number) row[1]).longValue()));
+    }
+    attackTypes.sort(Comparator.comparingLong(NamedCount::count).reversed());
+    List<TimelinePoint> timeline = hours.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .map(entry -> new TimelinePoint(entry.getKey(), entry.getValue()))
+        .toList();
     return new StatsOverviewResponse(
-        webEventRepository.count(),
-        alertRepository.count(),
-        incidentRepository.countByStatus(TriageStatus.OPEN),
-        bySeverity
+        webEventRepository.countFiltered(appId),
+        alerts.size(),
+        incidentRepository.countByStatusAndApp(TriageStatus.OPEN, appId),
+        bySeverity,
+        timeline,
+        attackTypes,
+        top(ips, 5),
+        top(paths, 5)
     );
+  }
+
+  private static List<NamedCount> top(Map<String, Long> counts, int limit) {
+    return counts.entrySet().stream()
+        .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+        .limit(limit)
+        .map(entry -> new NamedCount(entry.getKey(), entry.getValue()))
+        .toList();
   }
 
   private List<DetectionHitResponse> hitsOf(Long eventId) {

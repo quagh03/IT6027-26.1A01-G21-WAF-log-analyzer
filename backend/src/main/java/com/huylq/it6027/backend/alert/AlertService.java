@@ -6,8 +6,10 @@ import com.huylq.it6027.backend.api.dto.IncidentResponse;
 import com.huylq.it6027.backend.entity.Alert;
 import com.huylq.it6027.backend.entity.Application;
 import com.huylq.it6027.backend.entity.WebEvent;
+import com.huylq.it6027.backend.config.LlmProperties;
 import com.huylq.it6027.backend.entity.enums.TriageStatus;
 import com.huylq.it6027.backend.incident.IncidentManager;
+import com.huylq.it6027.backend.llm.ExplainRequest;
 import com.huylq.it6027.backend.realtime.RealtimeNotice;
 import com.huylq.it6027.backend.repository.AlertRepository;
 import com.huylq.it6027.backend.scoring.SeverityBands;
@@ -24,15 +26,18 @@ public class AlertService {
   private final AlertRepository alertRepository;
   private final IncidentManager incidentManager;
   private final ApplicationEventPublisher events;
+  private final LlmProperties llmProperties;
 
   public AlertService(
       AlertRepository alertRepository,
       IncidentManager incidentManager,
-      ApplicationEventPublisher events
+      ApplicationEventPublisher events,
+      LlmProperties llmProperties
   ) {
     this.alertRepository = alertRepository;
     this.incidentManager = incidentManager;
     this.events = events;
+    this.llmProperties = llmProperties;
   }
 
   public void openIfThreshold(WebEvent event) {
@@ -63,6 +68,12 @@ public class AlertService {
         ? SocResponses.incident(promotion.incident())
         : null;
     events.publishEvent(new RealtimeNotice(alertBody, incidentBody));
+    if (promotion.created()
+        && llmProperties.enabled()
+        && promotion.incident() != null
+        && promotion.incident().getId() != null) {
+      events.publishEvent(new ExplainRequest(promotion.incident().getId()));
+    }
   }
 
   private static int threshold(Application application) {

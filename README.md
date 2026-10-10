@@ -123,7 +123,7 @@ Seeded lab users (BCrypt in Flyway V1):
 | `analyst` | `analyst` | ANALYST (triage + read, no rule write) |
 | `viewer` | `viewer` | VIEWER (read + SSE) |
 
-`app.llm.enabled` defaults to **false**. A new incident is stored with `explanation_status=SKIPPED`. Nothing on the ingest path calls Ollama. `POST /api/incidents/{id}/explain` returns **501** until Week 4.
+`app.llm.enabled` defaults to **false**. A new incident is stored with `explanation_status=SKIPPED`. Nothing on the ingest path calls Ollama. With the LLM profile on, a **newly created** incident is `PENDING` and explained after commit. `POST /api/incidents/{id}/explain` returns **202** and retries asynchronously.
 
 Alert when `risk_score >= application.risk_threshold` (default 60), one alert per event. Incident policy (§7.5):
 
@@ -152,3 +152,34 @@ curl -sS -X PATCH -H "Authorization: Bearer $TOKEN" -H 'Content-Type: applicatio
 ```
 
 Kafka topic `security-alerts` gets one JSON message per new alert (`incidentId` is null until that alert is promoted).
+
+## Week 4 — SOC UI, labelled probes, optional Ollama
+
+**Ethics:** probe scripts only call the Juice Shop instance in this local Compose lab (`http://127.0.0.1` with `Host: juice.lab.local` or `shop.lab.local`). Do not point them at any other host.
+
+```bash
+# UI container (browser on the host talks to the API on 127.0.0.1:8080)
+docker compose --profile ui up -d --build
+# open http://127.0.0.1:3001  login admin / admin
+
+# or Vite on the host (proxies /api to 127.0.0.1:8080; leave VITE_API_BASE_URL empty)
+cd frontend && npm install && npm run dev
+```
+
+Probes (30 scenarios in `scenarios.yaml`: 24 expected alerts, 6 clean) and 50 benign browses:
+
+```bash
+./datasets/probes/run.sh
+./datasets/probes/browse_clean.sh
+```
+
+Labels for a later measurement pass are in `datasets/ground_truth.csv` (30 probe rows + 50 browse rows).
+
+Ollama is optional. Without it, new incidents stay `SKIPPED` and the SOC still shows alerts. To explain locally:
+
+```bash
+APP_LLM_ENABLED=true docker compose --profile ui --profile llm up -d --build
+docker compose exec ollama ollama pull llama3.2
+```
+
+If the model is missing or times out, the incident stays visible with `explanation_status=FAILED`. Retry with `POST /api/incidents/{id}/explain` (HTTP returns 202 before the model call). The UI marks explanations as AI-assisted and possibly wrong. Explain runs only when an incident is created, not when a later alert is attached.

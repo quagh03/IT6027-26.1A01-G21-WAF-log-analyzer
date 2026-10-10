@@ -33,6 +33,15 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 
   @Query("""
       SELECT a FROM Alert a
+      JOIN FETCH a.application
+      JOIN FETCH a.event
+      WHERE (:appId IS NULL OR a.application.id = :appId)
+      ORDER BY a.createdAt DESC, a.id DESC
+      """)
+  List<Alert> findForStats(@Param("appId") Long appId);
+
+  @Query("""
+      SELECT a FROM Alert a
       JOIN FETCH a.event
       WHERE a.incident.id = :incidentId
       ORDER BY a.createdAt ASC, a.id ASC

@@ -5,6 +5,7 @@ import com.huylq.it6027.backend.api.dto.AlertResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -20,8 +21,8 @@ public class AlertController {
   }
 
   @GetMapping
-  public List<AlertResponse> list() {
-    return socReadService.listAlerts();
+  public List<AlertResponse> list(@RequestParam(required = false) Long appId) {
+    return socReadService.listAlerts(appId);
   }
 
   @GetMapping("/{id}")

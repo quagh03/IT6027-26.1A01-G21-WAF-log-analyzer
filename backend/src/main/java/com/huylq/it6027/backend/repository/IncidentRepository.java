@@ -15,6 +15,13 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
   long countByStatus(TriageStatus status);
 
   @Query("""
+      SELECT COUNT(i) FROM Incident i
+      WHERE i.status = :status
+        AND (:appId IS NULL OR i.application.id = :appId)
+      """)
+  long countByStatusAndApp(@Param("status") TriageStatus status, @Param("appId") Long appId);
+
+  @Query("""
       SELECT i FROM Incident i
       JOIN FETCH i.application
       WHERE i.application.id = :appId

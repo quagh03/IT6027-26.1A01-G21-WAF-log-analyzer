@@ -57,16 +57,17 @@ public class IncidentManager {
 
   /**
    * @param mutated true when an incident was created or an alert was attached
+   * @param created true only when this call inserted a new incident (explain is enqueued then, not on attach)
    */
-  public record Promotion(Incident incident, boolean mutated) {
+  public record Promotion(Incident incident, boolean mutated, boolean created) {
   }
 
   public Promotion promote(Alert alert) {
     if (alert.getIncident() != null) {
-      return new Promotion(alert.getIncident(), false);
+      return new Promotion(alert.getIncident(), false, false);
     }
     if (alert.getSeverity() == Severity.LOW) {
-      return new Promotion(null, false);
+      return new Promotion(null, false, false);
     }
 
     Instant now = clock.instant();
@@ -87,12 +88,12 @@ public class IncidentManager {
       note(open, "Attached alert " + alert.getId()
           + " severity=" + open.getSeverity()
           + " score=" + open.getScore());
-      return new Promotion(open, true);
+      return new Promotion(open, true, false);
     }
 
     if (alert.getSeverity() == Severity.CRITICAL) {
       Incident created = create(alert, PromoteReason.IMMEDIATE, List.of(alert), now);
-      return new Promotion(created, true);
+      return new Promotion(created, true, true);
     }
 
     List<Alert> pending = alertRepository.findUnattachedSince(
@@ -102,10 +103,10 @@ public class IncidentManager {
         cutoff
     );
     if (pending.size() < incidentProperties.aggregateThreshold()) {
-      return new Promotion(null, false);
+      return new Promotion(null, false, false);
     }
     Incident created = create(alert, PromoteReason.AGGREGATE, pending, now);
-    return new Promotion(created, true);
+    return new Promotion(created, true, true);
   }
 
   private boolean isStale(Incident incident, Instant cutoff) {

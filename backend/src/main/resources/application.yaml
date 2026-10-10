@@ -58,8 +58,12 @@ app:
     window-minutes: 5
     aggregate-threshold: 3
   llm:
-    # Week 4 turns this on with the Ollama profile. Off → explanation_status SKIPPED, no HTTP call.
-    enabled: false
+    # Off → explanation_status SKIPPED and no HTTP call. Profile llm or APP_LLM_ENABLED=true turns it on.
+    enabled: ${APP_LLM_ENABLED:false}
+    base-url: ${OLLAMA_BASE_URL:http://127.0.0.1:11434}
+    model: ${OLLAMA_MODEL:llama3.2}
+    timeout-seconds: 20
+    max-alerts: 5
   security:
     jwt:
       secret: ${JWT_SECRET:waf-lab-jwt-secret-change-me-32b!}
@@ -80,4 +84,5 @@ logging:
     com.huylq.it6027.backend.rules: INFO
     com.huylq.it6027.backend.alert: INFO
     com.huylq.it6027.backend.incident: INFO
+    com.huylq.it6027.backend.llm: INFO
     org.springframework.kafka: INFO
