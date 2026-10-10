@@ -79,3 +79,10 @@ browse-47,browse,CLEAN,GET,juice.lab.local,/video,,clean,benign browse
 browse-48,browse,CLEAN,GET,juice.lab.local,/promotion,,clean,benign browse
 browse-49,browse,CLEAN,GET,juice.lab.local,/rest/wallet/balance,,clean,benign browse
 browse-50,browse,CLEAN,GET,juice.lab.local,/rest/saveLoginIp,,clean,benign browse
+hard-sqli-mixed-case,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1+oR+1%3d1+UnIoN+SeLeCt+null,alert,mixed-case boolean + union separated by plus
+hard-sqli-obrien,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=O%27Brien%27--+UNION+SELECT+1,alert,name-like quote-comment plus union
+hard-sqli-waitfor,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1;waitfor%20delay%20%270:0:1%27,alert,stacked waitfor delay
+hard-xss-double-svg,probe,XSS,GET,juice.lab.local,/rest/products/search,q=%253csvg%20onload%3dalert(1)%253e%20javascript:void(0),alert,double-encoded svg onload plus javascript URI
+hard-pt-double,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=%252e%252e%252f%252e%252e%252fetc/passwd,alert,double-encoded dot-dot
+hard-pt-win,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=%2e%2e%5c..%5cwindows%5cwin.ini,alert,encoded backslash traversal
+hard-multi,probe,MIXED,GET,juice.lab.local,/rest/products/search,q=1+OR+1%3d1+UNION+SELECT+1&x=%3Cscript%3Ejavascript:alert(1)&file=../../etc/passwd,alert,SQLi + XSS + traversal

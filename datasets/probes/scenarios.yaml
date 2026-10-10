@@ -198,6 +198,62 @@ scenarios:
     expected: alert
     note: DOUBLE + DOTDOT
 
+  - id: hard-sqli-mixed-case
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=1+oR+1%3d1+UnIoN+SeLeCt+null"
+    expected: alert
+    note: encoded mixed-case boolean + union, CRITICAL
+
+  - id: hard-sqli-obrien
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=O%27Brien%27--+UNION+SELECT+1"
+    expected: alert
+    note: name-like quote-comment plus union, CRITICAL
+
+  - id: hard-sqli-waitfor
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=1;waitfor%20delay%20%270:0:1%27"
+    expected: alert
+    note: stacked waitfor delay, no UNION, CRITICAL
+
+  - id: hard-xss-double-svg
+    category: XSS
+    method: GET
+    path: /rest/products/search
+    query: "q=%253csvg%20onload%3dalert(1)%253e%20javascript:void(0)"
+    expected: alert
+    note: double-encoded svg onload plus javascript URI, CRITICAL
+
+  - id: hard-pt-double
+    category: PATH_TRAVERSAL
+    method: GET
+    path: /ftp
+    query: "file=%252e%252e%252f%252e%252e%252fetc/passwd"
+    expected: alert
+    note: double-encoded dot-dot only, CRITICAL
+
+  - id: hard-pt-win
+    category: PATH_TRAVERSAL
+    method: GET
+    path: /ftp
+    query: "file=%2e%2e%5c..%5cwindows%5cwin.ini"
+    expected: alert
+    note: encoded backslash traversal, CRITICAL
+
+  - id: hard-multi
+    category: MIXED
+    method: GET
+    path: /rest/products/search
+    query: "q=1+OR+1%3d1+UNION+SELECT+1&x=%3Cscript%3Ejavascript:alert(1)&file=../../etc/passwd"
+    expected: alert
+    note: SQLi + XSS + traversal in one query, CRITICAL
+
   - id: clean-apple
     category: CLEAN
     method: GET

@@ -34,6 +34,7 @@ public class OllamaLlmClient implements LlmClient {
     Map<String, Object> body = Map.of(
         "model", model,
         "stream", false,
+        "think", false,
         "messages", List.of(Map.of("role", "user", "content", prompt))
     );
     String raw = restClient.post()

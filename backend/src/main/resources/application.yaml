@@ -58,12 +58,14 @@ app:
     window-minutes: 5
     aggregate-threshold: 3
   llm:
-    # Off → explanation_status SKIPPED and no HTTP call. Profile llm or APP_LLM_ENABLED=true turns it on.
-    enabled: ${APP_LLM_ENABLED:false}
+    # Host Ollama (qwen3.5:9b). Set APP_LLM_ENABLED=false to store SKIPPED and skip HTTP.
+    enabled: ${APP_LLM_ENABLED:true}
     base-url: ${OLLAMA_BASE_URL:http://127.0.0.1:11434}
-    model: ${OLLAMA_MODEL:llama3.2}
-    timeout-seconds: 20
+    model: "${OLLAMA_MODEL:qwen3.5:9b}"
+    timeout-seconds: 90
     max-alerts: 5
+    # Empty uses classpath prompts/incident-explain.txt. Set a path to try other wording.
+    prompt-file: ${LLM_PROMPT_FILE:}
   security:
     jwt:
       secret: ${JWT_SECRET:waf-lab-jwt-secret-change-me-32b!}

@@ -9,6 +9,17 @@ Lab: Juice Shop → Nginx (JSON access log) → Filebeat → Kafka (`raw-web-log
 - Add to `/etc/hosts` (optional but useful):  
   `127.0.0.1 juice.lab.local shop.lab.local`
 
+## Operations
+
+`make help` lists the commands. Day-to-day start keeps the API on the host, because the backend image build downloads Gradle and can hang:
+
+```bash
+make up
+make backend
+```
+
+`make ui` starts Vite at http://127.0.0.1:5173. `make stack` is the full Compose stack, including `spring-security-backend`. There is no target for Compose profile `llm`.
+
 ## Week 1 — start lab
 
 ```bash
@@ -175,11 +186,18 @@ Probes (30 scenarios in `scenarios.yaml`: 24 expected alerts, 6 clean) and 50 be
 
 Labels for a later measurement pass are in `datasets/ground_truth.csv` (30 probe rows + 50 browse rows).
 
-Ollama is optional. Without it, new incidents stay `SKIPPED` and the SOC still shows alerts. To explain locally:
+Ollama is optional and runs on the host, not in Compose. Without it, new incidents stay `SKIPPED` and the SOC still shows alerts. This Mac already has Ollama on `127.0.0.1:11434` with `qwen3.5:9b`. A container cannot use that port until Ollama listens on all interfaces, because it currently binds only `127.0.0.1`. Quit the Ollama app, then:
 
 ```bash
-APP_LLM_ENABLED=true docker compose --profile ui --profile llm up -d --build
-docker compose exec ollama ollama pull llama3.2
+OLLAMA_HOST=0.0.0.0:11434 ollama serve
 ```
 
-If the model is missing or times out, the incident stays visible with `explanation_status=FAILED`. Retry with `POST /api/incidents/{id}/explain` (HTTP returns 202 before the model call). The UI marks explanations as AI-assisted and possibly wrong. Explain runs only when an incident is created, not when a later alert is attached.
+Leave that process running. In another terminal:
+
+```bash
+docker compose --profile ui up -d --build
+```
+
+Do not start Compose profile `llm`. That profile publishes another Ollama on port 11434 and would clash with the app on the host. Native Ollama on macOS uses the GPU; the Docker image does not.
+
+Explain instructions live in `backend/src/main/resources/prompts/incident-explain.txt`. Set `LLM_PROMPT_FILE` to an absolute path to try another wording without editing Java. If the model is missing or times out, the incident stays visible with `explanation_status=FAILED`. Retry with `POST /api/incidents/{id}/explain` (HTTP returns 202 before the model call). The UI marks explanations as AI-assisted and possibly wrong. Explain runs only when an incident is created, not when a later alert is attached.

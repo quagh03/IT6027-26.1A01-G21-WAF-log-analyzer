@@ -1,5 +1,5 @@
 app:
   llm:
     enabled: true
-    base-url: ${OLLAMA_BASE_URL:http://ollama:11434}
-    model: ${OLLAMA_MODEL:llama3.2}
+    base-url: ${OLLAMA_BASE_URL:http://127.0.0.1:11434}
+    model: "${OLLAMA_MODEL:qwen3.5:9b}"

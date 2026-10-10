@@ -30,6 +30,7 @@ public class IncidentExplainStore {
   private final ApplicationEventPublisher events;
   private final LlmProperties llmProperties;
   private final Clock clock;
+  private final String instructions;
 
   public IncidentExplainStore(
       IncidentRepository incidentRepository,
@@ -45,6 +46,7 @@ public class IncidentExplainStore {
     this.events = events;
     this.llmProperties = llmProperties;
     this.clock = clock;
+    this.instructions = ExplainInstructions.load(llmProperties.promptFile());
   }
 
   @Transactional
@@ -120,13 +122,7 @@ public class IncidentExplainStore {
   }
 
   private String buildPrompt(Incident incident, List<Alert> alerts) {
-    StringBuilder prompt = new StringBuilder();
-    prompt.append("""
-        Bạn là trợ lý SOC. Giải thích ngắn bằng tiếng Việt vì sao incident này được mở, chỉ dựa trên các hit bên dưới.
-        Không bịa payload. Không kết luận nếu không có hit.
-        Kết thúc đúng một dòng: CONFIDENCE: LOW hoặc CONFIDENCE: MEDIUM hoặc CONFIDENCE: HIGH.
-
-        """);
+    StringBuilder prompt = new StringBuilder(instructions);
     prompt.append("Incident: ").append(ExplainText.clip(incident.getTitle(), 180))
         .append(" severity=").append(incident.getSeverity())
         .append(" score=").append(incident.getScore())
@@ -140,13 +136,14 @@ public class IncidentExplainStore {
           .append(" score=").append(alert.getScore())
           .append(" severity=").append(alert.getSeverity())
           .append('\n');
-      prompt.append("request: ")
-          .append(ExplainText.clip(event.getMethod(), 16)).append(' ')
-          .append(ExplainText.clip(event.getPath(), 180));
+      prompt.append("method=").append(ExplainText.clip(event.getMethod(), 16))
+          .append(" path=").append(ExplainText.clip(event.getPath(), 180))
+          .append('\n');
       if (event.getQuery() != null && !event.getQuery().isBlank()) {
-        prompt.append('?').append(ExplainText.clip(event.getQuery(), 240));
+        prompt.append("raw_query=").append(ExplainText.clip(event.getQuery(), 240)).append('\n');
+        prompt.append("note: raw_query là chuỗi log, không giải mã.\n");
       }
-      prompt.append(" status=").append(event.getStatus()).append('\n');
+      prompt.append("status=").append(event.getStatus()).append('\n');
       List<DetectionHit> hits = detectionHitRepository.findByEventIdWithRule(event.getId());
       if (hits.isEmpty()) {
         prompt.append("hits: none\n");
