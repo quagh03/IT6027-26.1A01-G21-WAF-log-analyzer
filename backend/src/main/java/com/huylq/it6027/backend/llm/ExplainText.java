@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 final class ExplainText {
 
   private static final Pattern CONFIDENCE = Pattern.compile("(?i)CONFIDENCE:\\s*(LOW|MEDIUM|HIGH)");
-  private static final int MAX_BODY = 4000;
+  private static final int MAX_BODY = 8000;
 
   record Parsed(String body, ExplanationConfidence confidence) {
   }

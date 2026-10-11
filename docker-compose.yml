@@ -234,7 +234,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: http://127.0.0.1:8080
+        # Same-origin /api via nginx → spring-security-backend (avoids browser CORS to :8080)
+        VITE_API_BASE_URL: ""
     image: waf-log-analyzer/soc-dashboard:local
     container_name: soc-dashboard
     restart: unless-stopped

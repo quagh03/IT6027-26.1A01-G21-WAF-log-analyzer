@@ -1,6 +1,9 @@
 HELP.md
 .gradle
 build/
+
+# Host Gradle copied into the backend image build context (make prepare-docker-gradle)
+backend/docker-gradle/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/

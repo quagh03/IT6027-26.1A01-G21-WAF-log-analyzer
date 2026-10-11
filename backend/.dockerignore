@@ -7,3 +7,6 @@ HELP.md
 out
 *.iml
 .git
+# Keep docker-gradle/ (host-vendored Gradle 9.7.1) in the build context.
+!docker-gradle
+!docker-gradle/**

@@ -15,6 +15,8 @@ class ExplainInstructionsTest {
   void loadsTheClasspathPrompt() {
     String text = ExplainInstructions.load(null);
     assertTrue(text.contains("Cấm:"));
+    assertTrue(text.contains("VÌ SAO XẢY RA"));
+    assertTrue(text.contains("HÀNH ĐỘNG ĐỀ XUẤT"));
     assertTrue(text.contains("CONFIDENCE: HIGH"));
     assertTrue(text.endsWith("\n\n"));
   }

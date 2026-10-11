@@ -124,11 +124,24 @@ public class IncidentExplainStore {
   private String buildPrompt(Incident incident, List<Alert> alerts) {
     StringBuilder prompt = new StringBuilder(instructions);
     prompt.append("Incident: ").append(ExplainText.clip(incident.getTitle(), 180))
-        .append(" severity=").append(incident.getSeverity())
+        .append('\n');
+    if (incident.getApplication() != null) {
+      prompt.append("app=").append(ExplainText.clip(incident.getApplication().getName(), 80)).append('\n');
+    }
+    prompt.append("severity=").append(incident.getSeverity())
         .append(" score=").append(incident.getScore())
-        .append(" reason=").append(incident.getPromoteReason())
+        .append(" alert_count=").append(incident.getAlertCount())
+        .append(" promote_reason=").append(incident.getPromoteReason())
         .append(" ip=").append(ExplainText.clip(incident.getClientIp(), 64))
         .append('\n');
+    if (incident.getPromoteReason() != null) {
+      prompt.append("promote_note=");
+      prompt.append(switch (incident.getPromoteReason()) {
+        case IMMEDIATE -> "mở ngay vì có alert CRITICAL";
+        case AGGREGATE -> "mở vì gom đủ số alert cùng app+IP";
+      });
+      prompt.append('\n');
+    }
     int index = 1;
     for (Alert alert : alerts) {
       WebEvent event = alert.getEvent();
@@ -154,7 +167,7 @@ public class IncidentExplainStore {
             .append(" evidence=").append(ExplainText.clip(hit.getEvidence(), 180))
             .append('\n');
       }
-      if (prompt.length() > 3500) {
+      if (prompt.length() > 5000) {
         break;
       }
     }

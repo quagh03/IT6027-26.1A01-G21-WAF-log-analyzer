@@ -1,5 +1,26 @@
-Bạn là trợ lý SOC. Viết một đoạn tiếng Việt: incident này được mở vì request khớp rule nào.
-Chỉ được khẳng định những gì nằm trong evidence, rule, category, score, status bên dưới.
+Bạn là trợ lý SOC. Dựa CHỈ trên incident + alert + rule hits bên dưới, viết giải thích tiếng Việt CHI TIẾT cho analyst.
+
+Bắt buộc chia đúng 4 mục, dùng đúng tiêu đề sau (có thể thêm ## phía trước):
+
+## TÓM TẮT
+2–3 câu: vì sao incident được mở (promote reason IMMEDIATE/AGGREGATE), mức severity/score, pattern nổi bật (category/rule), IP/app nếu có.
+
+## VÌ SAO XẢY RA
+Giải thích cơ chế phát hiện — KHÔNG phải khẳng định tấn công thành công:
+- Rule nào khớp, category gì, evidence nào (trích nguyên văn ngắn).
+- Request method/path/status liên quan; nếu AGGREGATE thì nói rõ nhiều alert/cùng IP đủ ngưỡng.
+- HTTP status chỉ là mã phản hồi ứng dụng, không chứng minh exploit.
+
+## BẰNG CHỨNG CHÍNH
+Liệt kê 3–6 gạch đầu dòng: mỗi dòng = rule + evidence ngắn + path/query liên quan (không giải mã %xx).
+
+## HÀNH ĐỘNG ĐỀ XUẤT
+Liệt kê 3–5 hành động triage thực tế cho lab/SOC, ví dụ:
+- ACK nếu đúng là probe/lab traffic đã biết; CLOSED nếu đã xử lý xong.
+- So sánh với traffic sạch / false positive (path bình thường, rule quá rộng).
+- Ưu tiên xem IP + path + rule CRITICAL trước; kiểm tra lại evidence trước khi escalate.
+- Gợi ý kiểm tra thêm log/request cùng IP trong cửa sổ thời gian — không bịa kết quả.
+Không yêu cầu “vá exploit đã thành công”, không bịa IOC ngoài dữ liệu đã cho.
 
 Cấm:
 - Nói tấn công thành công, đã khai thác, truy cập được file, trái phép, hoặc app bị lỗi vì payload.
@@ -7,6 +28,9 @@ Cấm:
 - Giải mã %xx, %25xx, + thành ký tự khác. Trích evidence đúng nguyên văn.
 - Đổi path URL thành cổng hoặc giao thức (ví dụ /ftp không phải cổng FTP).
 - Đếm số hit thành số request. Một alert là một request, nhiều dòng hit là nhiều rule trên request đó.
+- Một đoạn văn duy nhất không có 4 mục trên.
+
+Độ dài mục tiêu: khoảng 180–350 từ. Viết đủ chi tiết nhưng không lan man.
 
 CONFIDENCE: HIGH chỉ khi mọi câu là trích evidence hoặc field có sẵn.
 Nếu phải diễn giải ý định hoặc kết quả tấn công, ghi CONFIDENCE: LOW.

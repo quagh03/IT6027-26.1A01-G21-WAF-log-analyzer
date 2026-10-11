@@ -4,6 +4,8 @@
 
 Khi xong: trạng thái Week 4 là `Done`, demo §2.3 chạy một lượt trên Compose.
 
+> **Lab 2026-10-11:** `make stack-ui` build backend với Gradle vendored (`backend/docker-gradle`). AC pass: SSE alert, IMMEDIATE incident + hits, ACK, app filter, `run.sh` 37 scenario / `browse_clean` 50, LLM off=`SKIPPED`, host Ollama `PENDING`→`READY`, `FAILED`+retry 202. README ghi số thật.
+
 ## Việc còn lại
 
 Code SOC, runner, ground truth và module explain đã có. Chưa pass trên lab:

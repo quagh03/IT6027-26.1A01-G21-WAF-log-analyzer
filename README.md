@@ -11,14 +11,24 @@ Lab: Juice Shop → Nginx (JSON access log) → Filebeat → Kafka (`raw-web-log
 
 ## Operations
 
-`make help` lists the commands. Day-to-day start keeps the API on the host, because the backend image build downloads Gradle and can hang:
+`make help` lists the commands.
+
+Day-to-day (API on the host):
 
 ```bash
 make up
-make backend
+make backend          # LLM off → new incidents SKIPPED
+# APP_LLM_ENABLED=true make backend   # optional host Ollama
 ```
 
-`make ui` starts Vite at http://127.0.0.1:5173. `make stack` is the full Compose stack, including `spring-security-backend`. There is no target for Compose profile `llm`.
+Full Compose (backend image + SOC UI). The image build vendors host Gradle via `make prepare-docker-gradle` so Docker does **not** download `gradle-*-bin.zip`:
+
+```bash
+make stack-ui         # http://127.0.0.1:3001  (LLM off)
+make stack-llm        # same + Compose profile llm (Ollama)
+```
+
+`make ui` starts Vite at http://127.0.0.1:5173.
 
 ## Week 1 — start lab
 
@@ -134,7 +144,7 @@ Seeded lab users (BCrypt in Flyway V1):
 | `analyst` | `analyst` | ANALYST (triage + read, no rule write) |
 | `viewer` | `viewer` | VIEWER (read + SSE) |
 
-`app.llm.enabled` defaults to **false**. A new incident is stored with `explanation_status=SKIPPED`. Nothing on the ingest path calls Ollama. With the LLM profile on, a **newly created** incident is `PENDING` and explained after commit. `POST /api/incidents/{id}/explain` returns **202** and retries asynchronously.
+`app.llm.enabled` / `APP_LLM_ENABLED` defaults to **false**. A new incident is stored with `explanation_status=SKIPPED`. Nothing on the ingest path calls Ollama. With LLM enabled (`make stack-llm` or `APP_LLM_ENABLED=true`), a **newly created** incident is `PENDING` and explained after commit. `POST /api/incidents/{id}/explain` returns **202** and retries asynchronously.
 
 Alert when `risk_score >= application.risk_threshold` (default 60), one alert per event. Incident policy (§7.5):
 
@@ -166,38 +176,36 @@ Kafka topic `security-alerts` gets one JSON message per new alert (`incidentId` 
 
 ## Week 4 — SOC UI, labelled probes, optional Ollama
 
-**Ethics:** probe scripts only call the Juice Shop instance in this local Compose lab (`http://127.0.0.1` with `Host: juice.lab.local` or `shop.lab.local`). Do not point them at any other host.
+**Ethics:** probe scripts only call the **self-hosted** Juice Shop in this local Compose lab (`http://127.0.0.1` with `Host: juice.lab.local` or `shop.lab.local`). Do not point them at remote or third-party sites.
 
 ```bash
-# UI container (browser on the host talks to the API on 127.0.0.1:8080)
-docker compose --profile ui up -d --build
+# Vendors ~/.gradle …/gradle-9.7.1 into backend/docker-gradle, then builds images
+make stack-ui
 # open http://127.0.0.1:3001  login admin / admin
 
 # or Vite on the host (proxies /api to 127.0.0.1:8080; leave VITE_API_BASE_URL empty)
 cd frontend && npm install && npm run dev
 ```
 
-Probes (30 scenarios in `scenarios.yaml`: 24 expected alerts, 6 clean) and 50 benign browses:
+Probes: **37** scenarios in `scenarios.yaml` (**31** `expected=alert`, **6** clean). Browse: **50** benign GETs in `browse_clean.sh` (confirmed `=== done 50 ===`).
 
 ```bash
 ./datasets/probes/run.sh
 ./datasets/probes/browse_clean.sh
 ```
 
-Labels for a later measurement pass are in `datasets/ground_truth.csv` (30 probe rows + 50 browse rows).
+Labels for a later measurement pass (Week 5 TP/FP/FN) are in `datasets/ground_truth.csv` (37 probe rows + 50 browse rows). Lab check after `run.sh`: most `expected=alert` scenarios produce alerts (e.g. ~28/31 in a 5‑minute window); note any missing `id` — do not build the TP/FP table in Week 4.
 
-Ollama is optional and runs on the host, not in Compose. Without it, new incidents stay `SKIPPED` and the SOC still shows alerts. This Mac already has Ollama on `127.0.0.1:11434` with `qwen3.5:9b`. A container cannot use that port until Ollama listens on all interfaces, because it currently binds only `127.0.0.1`. Quit the Ollama app, then:
+### LLM explain (two paths)
 
-```bash
-OLLAMA_HOST=0.0.0.0:11434 ollama serve
-```
+| Mode | Command | New incident `explanation_status` |
+|------|---------|-----------------------------------|
+| Off (default) | `make stack-ui` | `SKIPPED` — alerts/SSE still work |
+| On (host Ollama) | `APP_LLM_ENABLED=true OLLAMA_BASE_URL=http://host.docker.internal:11434 OLLAMA_MODEL=qwen3.5:9b docker compose up -d spring-security-backend` | `PENDING` → `READY` or `FAILED` |
+| On (Compose Ollama) | Stop host Ollama on `:11434`, then `make stack-llm` and `docker compose exec ollama ollama pull llama3.2` | same |
 
-Leave that process running. In another terminal:
+SSE alerts are never blocked by the model. Attaching a later alert to an existing incident does **not** re-explain. If explain `FAILED`, `POST /api/incidents/{id}/explain` returns **202** and runs async. The SOC incident screen shows *AI hỗ trợ, có thể không chính xác*.
 
-```bash
-docker compose --profile ui up -d --build
-```
+If the lab machine cannot pull a model, `FAILED` or `SKIPPED` still satisfies Week 4 AC-8/AC-9 — record that in the demo notes.
 
-Do not start Compose profile `llm`. That profile publishes another Ollama on port 11434 and would clash with the app on the host. Native Ollama on macOS uses the GPU; the Docker image does not.
-
-Explain instructions live in `backend/src/main/resources/prompts/incident-explain.txt`. Set `LLM_PROMPT_FILE` to an absolute path to try another wording without editing Java. If the model is missing or times out, the incident stays visible with `explanation_status=FAILED`. Retry with `POST /api/incidents/{id}/explain` (HTTP returns 202 before the model call). The UI marks explanations as AI-assisted and possibly wrong. Explain runs only when an incident is created, not when a later alert is attached.
+Explain prompt: `backend/src/main/resources/prompts/incident-explain.txt` (override with `LLM_PROMPT_FILE`).

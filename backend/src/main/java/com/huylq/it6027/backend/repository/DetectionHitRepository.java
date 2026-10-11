@@ -46,4 +46,15 @@ public interface DetectionHitRepository extends JpaRepository<DetectionHit, Long
       GROUP BY r.category
       """)
   List<Object[]> countByCategory(@Param("appId") Long appId);
+
+  @Query("""
+      SELECT r.code, COUNT(h)
+      FROM DetectionHit h
+      JOIN h.rule r
+      JOIN h.event e
+      WHERE (:appId IS NULL OR e.application.id = :appId)
+      GROUP BY r.code
+      ORDER BY COUNT(h) DESC
+      """)
+  List<Object[]> countByRuleCode(@Param("appId") Long appId);
 }

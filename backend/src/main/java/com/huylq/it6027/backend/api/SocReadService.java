@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -99,6 +100,8 @@ public class SocReadService {
   @Transactional(readOnly = true)
   public StatsOverviewResponse overview(Long appId) {
     List<Alert> alerts = alertRepository.findForStats(appId);
+    var incidents = incidentRepository.search(null, appId, null);
+
     Map<Severity, Long> bySeverity = new EnumMap<>(Severity.class);
     for (Severity severity : Severity.values()) {
       bySeverity.put(severity, 0L);
@@ -106,11 +109,39 @@ public class SocReadService {
     Map<String, Long> hours = new LinkedHashMap<>();
     Map<String, Long> ips = new LinkedHashMap<>();
     Map<String, Long> paths = new LinkedHashMap<>();
+    Map<String, Long> promoteReasons = new LinkedHashMap<>();
+    Map<String, Long> explanationByStatus = new LinkedHashMap<>();
+    for (ExplanationStatus status : ExplanationStatus.values()) {
+      explanationByStatus.put(status.name(), 0L);
+    }
+
+    Instant now = Instant.now();
+    Instant hourAgo = now.minus(1, ChronoUnit.HOURS);
+    Instant dayAgo = now.minus(24, ChronoUnit.HOURS);
+    long unattached = 0;
+    long alertsLastHour = 0;
+    long alertsLast24Hours = 0;
+    long criticalAlertCount = 0;
+    long scoreSum = 0;
+    int maxScore = 0;
+
     for (Alert alert : alerts) {
       if (alert.getSeverity() != null) {
         bySeverity.merge(alert.getSeverity(), 1L, Long::sum);
+        if (alert.getSeverity() == Severity.CRITICAL) {
+          criticalAlertCount++;
+        }
+      }
+      if (alert.getIncident() == null) {
+        unattached++;
       }
       if (alert.getCreatedAt() != null) {
+        if (!alert.getCreatedAt().isBefore(hourAgo)) {
+          alertsLastHour++;
+        }
+        if (!alert.getCreatedAt().isBefore(dayAgo)) {
+          alertsLast24Hours++;
+        }
         String bucket = DateTimeFormatter.ISO_INSTANT.format(
             alert.getCreatedAt().truncatedTo(ChronoUnit.HOURS)
         );
@@ -122,25 +153,70 @@ public class SocReadService {
       if (alert.getEvent() != null && alert.getEvent().getPath() != null) {
         paths.merge(alert.getEvent().getPath(), 1L, Long::sum);
       }
+      scoreSum += alert.getScore();
+      maxScore = Math.max(maxScore, alert.getScore());
     }
+
+    long openIncidents = 0;
+    long ackIncidents = 0;
+    long closedIncidents = 0;
+    for (var incident : incidents) {
+      if (incident.getStatus() == TriageStatus.OPEN) {
+        openIncidents++;
+      } else if (incident.getStatus() == TriageStatus.ACK) {
+        ackIncidents++;
+      } else if (incident.getStatus() == TriageStatus.CLOSED) {
+        closedIncidents++;
+      }
+      if (incident.getPromoteReason() != null) {
+        promoteReasons.merge(incident.getPromoteReason().name(), 1L, Long::sum);
+      }
+      if (incident.getExplanationStatus() != null) {
+        explanationByStatus.merge(incident.getExplanationStatus().name(), 1L, Long::sum);
+      }
+    }
+
     List<NamedCount> attackTypes = new ArrayList<>();
     for (Object[] row : detectionHitRepository.countByCategory(appId)) {
       attackTypes.add(new NamedCount(String.valueOf(row[0]), ((Number) row[1]).longValue()));
     }
     attackTypes.sort(Comparator.comparingLong(NamedCount::count).reversed());
+
+    List<NamedCount> topRules = new ArrayList<>();
+    for (Object[] row : detectionHitRepository.countByRuleCode(appId)) {
+      topRules.add(new NamedCount(String.valueOf(row[0]), ((Number) row[1]).longValue()));
+      if (topRules.size() >= 8) {
+        break;
+      }
+    }
+
     List<TimelinePoint> timeline = hours.entrySet().stream()
         .sorted(Map.Entry.comparingByKey())
         .map(entry -> new TimelinePoint(entry.getKey(), entry.getValue()))
         .toList();
+
+    Double averageScore = alerts.isEmpty() ? null : Math.round((scoreSum * 10.0) / alerts.size()) / 10.0;
+
     return new StatsOverviewResponse(
         webEventRepository.countFiltered(appId),
         alerts.size(),
-        incidentRepository.countByStatusAndApp(TriageStatus.OPEN, appId),
+        openIncidents,
+        ackIncidents,
+        closedIncidents,
+        unattached,
+        alertsLastHour,
+        alertsLast24Hours,
+        criticalAlertCount,
+        averageScore,
+        alerts.isEmpty() ? null : maxScore,
         bySeverity,
+        explanationByStatus,
         timeline,
         attackTypes,
-        top(ips, 5),
-        top(paths, 5)
+        top(ips, 8),
+        top(paths, 8),
+        topRules,
+        top(promoteReasons, 8)
     );
   }
 

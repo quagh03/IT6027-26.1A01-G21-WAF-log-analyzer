@@ -9,3 +9,8 @@ spring:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:redis}
       port: ${SPRING_DATA_REDIS_PORT:6379}
+
+app:
+  llm:
+    # Compose service `ollama` (profile llm). Override with OLLAMA_BASE_URL for host Ollama.
+    base-url: ${OLLAMA_BASE_URL:http://ollama:11434}

@@ -58,10 +58,10 @@ app:
     window-minutes: 5
     aggregate-threshold: 3
   llm:
-    # Host Ollama (qwen3.5:9b). Set APP_LLM_ENABLED=false to store SKIPPED and skip HTTP.
-    enabled: ${APP_LLM_ENABLED:true}
+    # Off by default → SKIPPED, no HTTP. Enable with APP_LLM_ENABLED=true (Compose profile llm).
+    enabled: ${APP_LLM_ENABLED:false}
     base-url: ${OLLAMA_BASE_URL:http://127.0.0.1:11434}
-    model: "${OLLAMA_MODEL:qwen3.5:9b}"
+    model: "${OLLAMA_MODEL:llama3.2}"
     timeout-seconds: 90
     max-alerts: 5
     # Empty uses classpath prompts/incident-explain.txt. Set a path to try other wording.

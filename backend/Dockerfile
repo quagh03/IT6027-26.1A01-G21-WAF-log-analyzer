@@ -1,12 +1,19 @@
+# Build uses a host-vendored Gradle distribution (see `make prepare-docker-gradle`).
+# That avoids downloading gradle-*-bin.zip inside the image (known hang on some labs).
 FROM eclipse-temurin:25-jdk AS build
 WORKDIR /src
 
-COPY gradlew settings.gradle build.gradle ./
-COPY gradle gradle
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon || true
+COPY docker-gradle /opt/gradle
+ENV PATH="/opt/gradle/bin:${PATH}"
+ENV GRADLE_USER_HOME=/root/.gradle
 
+COPY settings.gradle build.gradle ./
+COPY gradle gradle
 COPY src src
-RUN ./gradlew bootJar --no-daemon -x test \
+
+RUN --mount=type=cache,target=/root/.gradle/caches \
+    --mount=type=cache,target=/root/.gradle/notifications \
+    gradle bootJar --no-daemon -x test \
     && cp build/libs/backend-0.0.1-SNAPSHOT.jar /app.jar
 
 FROM eclipse-temurin:25-jre
