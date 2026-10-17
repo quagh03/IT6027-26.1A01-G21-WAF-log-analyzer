@@ -1,5 +1,7 @@
 # Plan hoàn thiện Week 5
 
+> Trạng thái: **Done** (2026-10-11) — số đo trong `datasets/eval/`, báo cáo `docs/report/final-report.*`, slide `docs/slides/demo-week05.md`.
+
 Đóng DoD trong `docs/weeks/week-05.md` và deliverable `docs/solution-design.md` §13. Phụ thuộc Week 4 `Done` (demo E2E trên Compose).
 
 OWASP Benchmark trong solution-design §3.2 và `docs/rule-creation.md` §2.B là Phase 2, không bắt buộc MVP. Plan này vẫn đo, như eval ngoài. Không đưa payload Benchmark vào prompt sinh rule. Không sửa rule sau khi xem kết quả. Nếu có sửa, lần đo sau không còn là external eval và báo cáo phải ghi rõ.

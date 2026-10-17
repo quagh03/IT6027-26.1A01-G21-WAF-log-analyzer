@@ -19,15 +19,19 @@ else
 GRADLE := $(GRADLE_BIN)
 endif
 
-.PHONY: help up down reset ps logs backend backend-stop ui ui-stop test probes browse token rules \
-	prepare-docker-gradle stack stack-ui stack-llm smoke
+.PHONY: help up down stop reset destroy ps logs backend backend-stop ui ui-stop test probes browse \
+	token rules prepare-docker-gradle stack stack-ui stack-llm smoke eval-juice eval-benchmark \
+	eval-latency simulate-monitoring
+
+# Always include optional profiles so ui/llm containers are not left behind.
+COMPOSE_DOWN := $(COMPOSE) --profile ui --profile llm
 
 help:
 	@printf '%s\n' \
 		'Lab' \
 		'  make up                 Hạ tầng Compose. Không build image backend, không profile llm' \
-		'  make down               Dừng Compose, giữ volume' \
-		'  make reset              Dừng Compose và xóa volume (Postgres, Redis, log Nginx)' \
+		'  make down / stop        Dừng toàn bộ Compose (kể cả ui/llm), giữ volume' \
+		'  make reset / destroy    Dừng Compose + xóa volume (Postgres, Redis, nginx-logs, ollama)' \
 		'  make ps                 Trạng thái container' \
 		'  make logs svc=nginx     Log một service. Bỏ svc để xem tất cả' \
 		'' \
@@ -42,8 +46,12 @@ help:
 		'  make token              In JWT admin' \
 		'  make probes             scenarios.yaml qua Nginx' \
 		'  make browse             50 request sạch' \
+		'  make simulate-monitoring  Random probe chain (Ctrl+C dừng)' \
 		'  make test               Unit test backend' \
 		'  make rules              Eval rule offline' \
+		'  make eval-juice         TP/FP/FN Juice (cần lab up)' \
+		'  make eval-benchmark     OWASP Benchmark external (lab sạch khuyến nghị)' \
+		'  make eval-latency       Đo request → alert' \
 		'' \
 		'Image trong Compose' \
 		'  make prepare-docker-gradle  Chép Gradle 9.7.1 từ máy vào backend/docker-gradle' \
@@ -54,11 +62,13 @@ help:
 up:
 	$(COMPOSE) up -d $(INFRA)
 
-down:
-	$(COMPOSE) down
+# Stop lab containers; keep named volumes (data survives).
+down stop:
+	$(COMPOSE_DOWN) down --remove-orphans
 
-reset:
-	$(COMPOSE) down -v
+# Stop lab and destroy volumes (clean slate for eval / demo).
+reset destroy:
+	$(COMPOSE_DOWN) down -v --remove-orphans
 
 ps:
 	$(COMPOSE) ps
@@ -123,3 +133,16 @@ stack-llm: prepare-docker-gradle
 smoke:
 	curl -fsS -o /dev/null -w 'juice %{http_code}\n' -H 'Host: juice.lab.local' http://127.0.0.1/
 	curl -fsS -o /dev/null -w 'shop %{http_code}\n' -H 'Host: shop.lab.local' http://127.0.0.1/
+
+eval-juice:
+	python3 datasets/eval/score_juice.py
+
+eval-benchmark:
+	python3 datasets/eval/owasp-benchmark/run_eval.py
+
+eval-latency:
+	python3 datasets/eval/measure_latency.py
+
+# Random probe chain for live SOC monitoring demo (Ctrl+C to stop).
+simulate-monitoring:
+	python3 datasets/probes/simulate_monitoring.py

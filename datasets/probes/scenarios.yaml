@@ -1,18 +1,26 @@
-# Week 4 attack scenarios. Ethics: local lab only (Juice Shop via Nginx).
-# Payloads sit on the query string so they appear in the Nginx access log.
-# expected=alert means score should reach the app threshold (default 60).
+# Attack scenarios for the local Juice Shop lab (Nginx). Ethics: do not retarget.
+# Payloads stay on the query string so they appear in the access log.
+#
+# Severity when Alert opens (score ≥ app threshold 60):
+#   MEDIUM   60–69
+#   HIGH     70–84
+#   CRITICAL ≥85
+#
+# Filter: python3 run.py --severity MEDIUM,HIGH
 
 base_url: http://127.0.0.1
 default_host: juice.lab.local
 
 scenarios:
+  # --- MEDIUM (60–69) -------------------------------------------------
   - id: sqli-time-sleep
     category: SQLI
     method: GET
     path: /rest/products/search
     query: "q=sleep(5)"
     expected: alert
-    note: TIME weight 60, MEDIUM
+    expected_severity: MEDIUM
+    note: "TIME weight 60 only → MEDIUM (run.py keeps parentheses)"
 
   - id: sqli-time-pgsleep
     category: SQLI
@@ -20,7 +28,8 @@ scenarios:
     path: /rest/products/search
     query: "q=pg_sleep(1)"
     expected: alert
-    note: TIME weight 60, MEDIUM
+    expected_severity: MEDIUM
+    note: "TIME weight 60 → MEDIUM"
 
   - id: sqli-time-benchmark
     category: SQLI
@@ -28,7 +37,8 @@ scenarios:
     path: /rest/products/search
     query: "q=benchmark(1,1)"
     expected: alert
-    note: TIME weight 60, MEDIUM
+    expected_severity: MEDIUM
+    note: "TIME weight 60 → MEDIUM"
 
   - id: sqli-time-waitfor
     category: SQLI
@@ -36,15 +46,55 @@ scenarios:
     path: /rest/products/search
     query: "q=waitfor delay '0:0:1'"
     expected: alert
-    note: TIME weight 60, MEDIUM
+    expected_severity: MEDIUM
+    note: "TIME weight 60 → MEDIUM (no ';' so STACKED does not fire)"
 
+  - id: med-sqli-union-404
+    category: SQLI
+    method: GET
+    path: /rest/products/search-missing-for-severity-demo
+    query: "q=1 UNION SELECT null"
+    expected: alert
+    expected_severity: MEDIUM
+    note: "UNION 55 + status_bonus 5 on HTTP 404 → 60 MEDIUM"
+
+  # --- HIGH (70–84) ---------------------------------------------------
+  - id: high-sqli-bool-comment
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=1 OR 1=1'--"
+    expected: alert
+    expected_severity: HIGH
+    note: "BOOLEAN-001 40 + COMMENT 35 = 75 HIGH (no UNION)"
+
+  - id: high-sqli-string-comment
+    category: SQLI
+    method: GET
+    path: /rest/products/search
+    query: "q=x' OR 'a'='a'--"
+    expected: alert
+    expected_severity: HIGH
+    note: "BOOLEAN-002 40 + COMMENT 35 = 75 HIGH"
+
+  - id: high-xss-event-comment
+    category: MIXED
+    method: GET
+    path: /rest/products/search
+    query: "q=<img src=x onerror=1>'--"
+    expected: alert
+    expected_severity: HIGH
+    note: "EVENT 45 + COMMENT 35 = 80 HIGH (no javascript:)"
+
+  # --- CRITICAL (≥85) -------------------------------------------------
   - id: sqli-union-bool
     category: SQLI
     method: GET
     path: /rest/products/search
     query: "q=1 OR 1=1 UNION SELECT 1"
     expected: alert
-    note: BOOLEAN 40 + UNION 55, CRITICAL
+    expected_severity: CRITICAL
+    note: "BOOLEAN 40 + UNION 55 = 95 CRITICAL"
 
   - id: sqli-string-union
     category: SQLI
@@ -52,7 +102,8 @@ scenarios:
     path: /rest/products/search
     query: "q=1 OR 'a'='a' UNION SELECT null"
     expected: alert
-    note: BOOLEAN-002 40 + UNION 55, CRITICAL
+    expected_severity: CRITICAL
+    note: "BOOLEAN-002 40 + UNION 55 = 95 CRITICAL"
 
   - id: sqli-stacked-sleep
     category: SQLI
@@ -60,7 +111,8 @@ scenarios:
     path: /rest/products/search
     query: "q=1;select sleep(1)"
     expected: alert
-    note: STACKED 50 + TIME 60, CRITICAL
+    expected_severity: CRITICAL
+    note: "STACKED 50 + TIME 60 CRITICAL"
 
   - id: sqli-comment-union
     category: SQLI
@@ -68,7 +120,8 @@ scenarios:
     path: /rest/products/search
     query: "q=1'-- UNION SELECT 1"
     expected: alert
-    note: COMMENT 35 + UNION 55, HIGH
+    expected_severity: CRITICAL
+    note: "COMMENT 35 + UNION 55 = 90 CRITICAL"
 
   - id: xss-script-js
     category: XSS
@@ -76,7 +129,8 @@ scenarios:
     path: /rest/products/search
     query: "q=<script>javascript:alert(1)</script>"
     expected: alert
-    note: SCRIPT 55 + JSURI 50
+    expected_severity: CRITICAL
+    note: "SCRIPT 55 + JSURI 50 CRITICAL"
 
   - id: xss-encoded
     category: XSS
@@ -84,7 +138,8 @@ scenarios:
     path: /rest/products/search
     query: "q=%3cscript%3ealert(1)%3c/script%3e"
     expected: alert
-    note: ENCODED 40 + SCRIPT 55
+    expected_severity: CRITICAL
+    note: "ENCODED 40 + SCRIPT 55 CRITICAL"
 
   - id: xss-event-js
     category: XSS
@@ -92,7 +147,8 @@ scenarios:
     path: /rest/products/search
     query: "q=<img src=x onerror=javascript:alert(1)>"
     expected: alert
-    note: EVENT 45 + JSURI 50
+    expected_severity: CRITICAL
+    note: "EVENT 45 + JSURI 50 CRITICAL"
 
   - id: xss-svg
     category: XSS
@@ -100,7 +156,8 @@ scenarios:
     path: /rest/products/search
     query: "q=<svg onload=alert(1)>"
     expected: alert
-    note: SCRIPT 55 + EVENT 45
+    expected_severity: CRITICAL
+    note: "SCRIPT 55 + EVENT 45 CRITICAL"
 
   - id: xss-iframe
     category: XSS
@@ -108,7 +165,8 @@ scenarios:
     path: /rest/products/search
     query: "q=<iframe src=javascript:alert(1)>"
     expected: alert
-    note: SCRIPT 55 + JSURI 50
+    expected_severity: CRITICAL
+    note: "SCRIPT 55 + JSURI 50 CRITICAL"
 
   - id: xss-double
     category: XSS
@@ -116,7 +174,8 @@ scenarios:
     path: /rest/products/search
     query: "q=%253cscript%3ealert(1)"
     expected: alert
-    note: ENCODED 40 + SCRIPT 55
+    expected_severity: CRITICAL
+    note: "ENCODED 40 + SCRIPT 55 CRITICAL"
 
   - id: xss-body
     category: XSS
@@ -124,7 +183,8 @@ scenarios:
     path: /rest/products/search
     query: "q=<body onload=javascript:alert(1)>"
     expected: alert
-    note: EVENT 45 + JSURI 50
+    expected_severity: CRITICAL
+    note: "EVENT 45 + JSURI 50 CRITICAL"
 
   - id: xss-vbscript
     category: XSS
@@ -132,7 +192,8 @@ scenarios:
     path: /rest/products/search
     query: "q=<script src=vbscript:msgbox(1)>"
     expected: alert
-    note: SCRIPT 55 + JSURI 50
+    expected_severity: CRITICAL
+    note: "SCRIPT 55 + JSURI 50 CRITICAL"
 
   - id: pt-dot-enc
     category: PATH_TRAVERSAL
@@ -140,7 +201,8 @@ scenarios:
     path: /ftp
     query: "file=../../etc/passwd%2e%2e%2f"
     expected: alert
-    note: DOTDOT 45 + ENCODED 50 on raw
+    expected_severity: CRITICAL
+    note: "DOTDOT 45 + ENCODED 50 CRITICAL"
 
   - id: pt-encoded-dot
     category: PATH_TRAVERSAL
@@ -148,7 +210,8 @@ scenarios:
     path: /ftp
     query: "file=..%2f..%2fetc/passwd%2e%2e%2f"
     expected: alert
-    note: DOTDOT + ENCODED
+    expected_severity: CRITICAL
+    note: "DOTDOT + ENCODED CRITICAL"
 
   - id: pt-backslash
     category: PATH_TRAVERSAL
@@ -156,7 +219,8 @@ scenarios:
     path: /ftp
     query: "file=..%5c..%5cwin.ini%2e%2e%5c"
     expected: alert
-    note: BACKSLASH + ENCODED
+    expected_severity: CRITICAL
+    note: "BACKSLASH + ENCODED CRITICAL"
 
   - id: pt-double
     category: PATH_TRAVERSAL
@@ -164,7 +228,8 @@ scenarios:
     path: /ftp
     query: "file=../%252e%252e%252fetc/passwd"
     expected: alert
-    note: DOTDOT + DOUBLE
+    expected_severity: CRITICAL
+    note: "DOTDOT + DOUBLE CRITICAL"
 
   - id: pt-mix
     category: PATH_TRAVERSAL
@@ -172,7 +237,8 @@ scenarios:
     path: /ftp
     query: "file=../../etc/passwd%2e%2e%5c"
     expected: alert
-    note: DOTDOT + ENCODED backslash
+    expected_severity: CRITICAL
+    note: "DOTDOT + ENCODED CRITICAL"
 
   - id: pt-query
     category: PATH_TRAVERSAL
@@ -180,7 +246,8 @@ scenarios:
     path: /ftp
     query: "q=../../../../etc/passwd%2e%2e/"
     expected: alert
-    note: DOTDOT + ENCODED
+    expected_severity: CRITICAL
+    note: "DOTDOT + ENCODED CRITICAL"
 
   - id: pt-win
     category: PATH_TRAVERSAL
@@ -188,7 +255,8 @@ scenarios:
     path: /ftp
     query: "file=..%5c..%5cwindows%5cwin.ini%2e%2e%5c"
     expected: alert
-    note: BACKSLASH + ENCODED
+    expected_severity: CRITICAL
+    note: "BACKSLASH + ENCODED CRITICAL"
 
   - id: pt-double-enc
     category: PATH_TRAVERSAL
@@ -196,7 +264,8 @@ scenarios:
     path: /ftp
     query: "file=%252e%252e%252f..%2fetc/passwd"
     expected: alert
-    note: DOUBLE + DOTDOT
+    expected_severity: CRITICAL
+    note: "DOUBLE + DOTDOT CRITICAL"
 
   - id: hard-sqli-mixed-case
     category: SQLI
@@ -204,7 +273,8 @@ scenarios:
     path: /rest/products/search
     query: "q=1+oR+1%3d1+UnIoN+SeLeCt+null"
     expected: alert
-    note: encoded mixed-case boolean + union, CRITICAL
+    expected_severity: CRITICAL
+    note: "boolean + union CRITICAL"
 
   - id: hard-sqli-obrien
     category: SQLI
@@ -212,7 +282,8 @@ scenarios:
     path: /rest/products/search
     query: "q=O%27Brien%27--+UNION+SELECT+1"
     expected: alert
-    note: name-like quote-comment plus union, CRITICAL
+    expected_severity: CRITICAL
+    note: "comment + union CRITICAL"
 
   - id: hard-sqli-waitfor
     category: SQLI
@@ -220,7 +291,8 @@ scenarios:
     path: /rest/products/search
     query: "q=1;waitfor%20delay%20%270:0:1%27"
     expected: alert
-    note: stacked waitfor delay, no UNION, CRITICAL
+    expected_severity: CRITICAL
+    note: "STACKED + TIME CRITICAL"
 
   - id: hard-xss-double-svg
     category: XSS
@@ -228,7 +300,8 @@ scenarios:
     path: /rest/products/search
     query: "q=%253csvg%20onload%3dalert(1)%253e%20javascript:void(0)"
     expected: alert
-    note: double-encoded svg onload plus javascript URI, CRITICAL
+    expected_severity: CRITICAL
+    note: "encoded svg + javascript URI CRITICAL"
 
   - id: hard-pt-double
     category: PATH_TRAVERSAL
@@ -236,7 +309,8 @@ scenarios:
     path: /ftp
     query: "file=%252e%252e%252f%252e%252e%252fetc/passwd"
     expected: alert
-    note: double-encoded dot-dot only, CRITICAL
+    expected_severity: CRITICAL
+    note: "double-encoded traversal CRITICAL"
 
   - id: hard-pt-win
     category: PATH_TRAVERSAL
@@ -244,7 +318,8 @@ scenarios:
     path: /ftp
     query: "file=%2e%2e%5c..%5cwindows%5cwin.ini"
     expected: alert
-    note: encoded backslash traversal, CRITICAL
+    expected_severity: CRITICAL
+    note: "backslash traversal CRITICAL"
 
   - id: hard-multi
     category: MIXED
@@ -252,14 +327,17 @@ scenarios:
     path: /rest/products/search
     query: "q=1+OR+1%3d1+UNION+SELECT+1&x=%3Cscript%3Ejavascript:alert(1)&file=../../etc/passwd"
     expected: alert
-    note: SQLi + XSS + traversal in one query, CRITICAL
+    expected_severity: CRITICAL
+    note: "SQLi + XSS + traversal CRITICAL"
 
+  # --- CLEAN ----------------------------------------------------------
   - id: clean-apple
     category: CLEAN
     method: GET
     path: /rest/products/search
     query: "q=apple"
     expected: clean
+    expected_severity: CLEAN
     note: benign search
 
   - id: clean-juice
@@ -268,6 +346,7 @@ scenarios:
     path: /rest/products/search
     query: "q=juice"
     expected: clean
+    expected_severity: CLEAN
     note: benign search
 
   - id: clean-numeric
@@ -276,6 +355,7 @@ scenarios:
     path: /rest/products/search
     query: "q=1"
     expected: clean
+    expected_severity: CLEAN
     note: benign numeric query
 
   - id: clean-home
@@ -284,6 +364,7 @@ scenarios:
     path: /
     query: ""
     expected: clean
+    expected_severity: CLEAN
     note: Juice Shop home
 
   - id: clean-shop-home
@@ -293,6 +374,7 @@ scenarios:
     query: ""
     host: shop.lab.local
     expected: clean
+    expected_severity: CLEAN
     note: second app scope
 
   - id: clean-product
@@ -301,4 +383,5 @@ scenarios:
     path: /rest/products/1
     query: ""
     expected: clean
+    expected_severity: CLEAN
     note: product detail

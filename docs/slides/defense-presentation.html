@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WAF Log Analyzer — Bảo vệ IT6027 · G21</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] },
+      startup: { typeset: true }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <style>
+    :root {
+      --hust-red: #bf2034;
+      --hust-red-dark: #9e1a2a;
+      --hust-gold: #e59c0a;
+      --bg: #ffffff;
+      --bg2: #f6f6f7;
+      --panel: #f8f8f9;
+      --line: #e2e2e5;
+      --text: #1c1c1e;
+      --muted: #5c5c66;
+      --accent: #bf2034;
+      --accent2: #b8860b;
+      --danger: #c62828;
+      --ok: #2e7d32;
+      --font: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --mono: "SF Mono", Menlo, Consolas, monospace;
+      --sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #111; color: var(--text); font-family: var(--sans); }
+    .deck { height: 100%; display: flex; flex-direction: column; }
+    .stage {
+      flex: 1; position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      background: #1a1a1a;
+    }
+    .slide {
+      position: absolute;
+      width: min(100%, calc(100vh * 16 / 9));
+      height: min(100%, calc(100vw * 9 / 16));
+      aspect-ratio: 16 / 9;
+      background: #fff;
+      color: var(--text);
+      padding: 7.2% 4.5% 8.5% 4.5%;
+      display: none; flex-direction: column; justify-content: center; gap: .55rem;
+      opacity: 0; transform: scale(.985);
+      transition: opacity .22s ease, transform .22s ease;
+      overflow: hidden;
+    }
+    .slide.active { display: flex; opacity: 1; transform: none; }
+    .slide.dense { justify-content: flex-start; padding-top: 7.5%; }
+    .slide.content::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: url("hust-assets/chrome-content.png") center / 100% 100% no-repeat;
+      pointer-events: none; z-index: 5;
+    }
+    .slide .page-num {
+      position: absolute; right: 2.6%; bottom: 3.2%;
+      z-index: 6; color: var(--hust-red); font-weight: 700;
+      font-size: clamp(.85rem, 1.6vh, 1.15rem); font-family: var(--sans);
+    }
+    .slide > *:not(.page-num) { position: relative; z-index: 1; }
+
+    .slide.cover {
+      padding: 0; background: #bf2034 center/cover no-repeat;
+      background-image: url("hust-assets/bg-cover.png");
+      justify-content: flex-end; align-items: center;
+    }
+    .slide.cover .cover-meta {
+      position: absolute; bottom: 8%; left: 0; right: 0; text-align: center;
+      color: #fff; font-size: clamp(.85rem, 1.6vh, 1.1rem); letter-spacing: .04em;
+      z-index: 2;
+    }
+
+    .slide.title-slide {
+      padding: 6% 6% 10% 6%;
+      background: #fff url("hust-assets/deco-title-right.png") right center / contain no-repeat;
+      justify-content: center;
+    }
+    .slide.title-slide .brand-row {
+      position: absolute; top: 4.5%; left: 4.5%;
+      display: flex; align-items: center; gap: .85rem; z-index: 2;
+    }
+    .slide.title-slide .brand-row img { height: clamp(48px, 8vh, 72px); width: auto; }
+    .slide.title-slide .brand-txt { line-height: 1.15; }
+    .slide.title-slide .brand-txt .vn {
+      font-weight: 800; font-size: clamp(.72rem, 1.35vh, .95rem);
+      letter-spacing: .02em; color: #111; text-transform: uppercase;
+    }
+    .slide.title-slide .brand-txt .en {
+      font-weight: 500; font-size: clamp(.55rem, 1.05vh, .72rem);
+      color: #333; text-transform: uppercase; letter-spacing: .02em;
+    }
+    .slide.title-slide .title-block { max-width: 58%; margin-top: 4%; }
+    .slide.title-slide h1 {
+      color: var(--hust-red); font-size: clamp(1.8rem, 4.2vh, 3rem);
+      max-width: none; font-weight: 800;
+    }
+    .slide.title-slide .lead { color: var(--hust-red); font-size: clamp(1rem, 2.1vh, 1.35rem); }
+    .slide.title-slide .title-meta { color: var(--hust-red); font-size: clamp(.95rem, 1.9vh, 1.2rem); margin-top: .4rem; }
+    .slide.title-slide .slogan {
+      position: absolute; left: 4.5%; bottom: 5%;
+      color: var(--hust-red); font-weight: 800; letter-spacing: .06em;
+      font-size: clamp(.85rem, 1.7vh, 1.15rem); z-index: 2;
+    }
+
+    .slide.section {
+      padding: 0;
+      background: #bf2034 center/cover no-repeat;
+      background-image: url("hust-assets/bg-section.png");
+      justify-content: center; align-items: center; text-align: center;
+    }
+    .slide.section h2 {
+      color: #fff; font-size: clamp(1.8rem, 4.5vh, 3.2rem);
+      text-shadow: 0 2px 12px rgba(0,0,0,.25); max-width: 16ch;
+    }
+    .slide.section .lead { color: rgba(255,255,255,.9); }
+
+    .slide.thanks {
+      padding: 0;
+      background: #fff center/cover no-repeat;
+      background-image: url("hust-assets/bg-thanks.png");
+      justify-content: center;
+    }
+    .slide.thanks .thanks-extra {
+      position: absolute; right: 8%; bottom: 18%; max-width: 48%;
+      color: var(--muted); font-size: clamp(.8rem, 1.5vh, 1rem); z-index: 2;
+      text-align: right;
+    }
+
+    .eyebrow {
+      font-size: .7rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--hust-red); font-weight: 700; margin: 0;
+      display: inline-flex; align-items: center; gap: .45rem;
+    }
+    .eyebrow::after {
+      content: ""; display: inline-block; width: 2.2rem; height: 2px;
+      background: linear-gradient(90deg, var(--hust-red), transparent);
+      border-radius: 2px;
+    }
+    h1 {
+      font-family: var(--font); font-size: clamp(1.7rem, 3.8vh, 2.7rem);
+      line-height: 1.12; margin: 0; max-width: 22ch; color: var(--hust-red); font-weight: 800;
+    }
+    h2 {
+      font-family: var(--font); font-size: clamp(1.22rem, 2.5vh, 1.9rem);
+      margin: 0; line-height: 1.22; color: #111; font-weight: 750;
+      letter-spacing: -.01em;
+    }
+    h3 { margin: 0 0 .35rem; font-size: .92rem; color: var(--hust-red); font-weight: 700; }
+    p, li { line-height: 1.4; }
+    .lead { font-size: clamp(.92rem, 1.45vh, 1.1rem); color: var(--muted); max-width: 52rem; margin: 0; }
+    .grid-2 { display: grid; grid-template-columns: 1.05fr .95fr; gap: .9rem; align-items: stretch; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: .65rem; }
+    .grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+    @media (max-width: 960px) {
+      .slide { width: 100%; height: 100%; aspect-ratio: auto; }
+      .grid-2, .grid-3, .grid-4, .grid-6 { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: linear-gradient(165deg, #ffffff 0%, #f7f7f9 100%);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: .85rem 1rem;
+      box-shadow: 0 1px 2px rgba(20,20,30,.04), 0 8px 24px rgba(20,20,30,.04);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: linear-gradient(180deg, var(--hust-red), var(--hust-gold));
+      opacity: .85;
+    }
+    .card.flat::before { display: none; }
+    .card strong { color: var(--hust-red); }
+
+    /* Agenda cubes */
+    .agenda-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .65rem;
+      margin-top: .1rem;
+    }
+    .cube {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: .7rem .85rem .75rem;
+      min-height: 0;
+      div: 3px;
+      display: flex; flex-direction: column; gap: .3rem;
+      box-shadow: 0 2px 8px rgba(20,20,30,.05);
+      position: relative;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .slide.active .cube { animation: cubeIn .45s ease both; }
+    .slide.active .cube:nth-child(1) { animation-delay: .02s; }
+    .slide.active .cube:nth-child(2) { animation-delay: .06s; }
+    .slide.active .cube:nth-child(3) { animation-delay: .1s; }
+    .slide.active .cube:nth-child(4) { animation-delay: .14s; }
+    .slide.active .cube:nth-child(5) { animation-delay: .18s; }
+    .slide.active .cube:nth-child(6) { animation-delay: .22s; }
+    @keyframes cubeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+    .cube.hot {
+      border-color: color-mix(in srgb, var(--hust-red) 35%, var(--line));
+      background: linear-gradient(160deg, #fff 55%, #fcecef 100%);
+    }
+    .cube.warn {
+      border-color: color-mix(in srgb, var(--hust-gold) 40%, var(--line));
+      background: linear-gradient(160deg, #fff 55%, #fff8e8 100%);
+    }
+    .cube .cube-idx {
+      font-family: var(--mono);
+      font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+      color: var(--hust-red);
+    }
+    .cube .cube-title {
+      font-size: .9rem; font-weight: 700; color: #151518; line-height: 1.28;
+      margin: 0; flex: 1;
+    }
+    .cube .cube-time {
+      align-self: flex-start;
+      font-size: .68rem; font-weight: 650;
+      color: #8a6a00; background: #fff6e0;
+      border: 1px solid #f0d89a; border-radius: 999px;
+      padding: .08rem .45rem;
+    }
+    .cube .cube-time.muted {
+      color: var(--muted); background: #f3f3f5; border-color: var(--line);
+    }
+    .agenda-foot {
+      margin-top: .45rem;
+      display: grid; grid-template-columns: 1.15fr .85fr; gap: .65rem;
+    }
+    .agenda-foot .quote-box {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px;
+      padding: .6rem .85rem; border-left: 4px solid var(--hust-red);
+      box-shadow: 0 4px 16px rgba(20,20,30,.04);
+    }
+    .agenda-foot .quote-box .big-quote {
+      border: none; padding: 0; font-size: clamp(.88rem, 1.45vh, 1.05rem);
+    }
+    .agenda-foot .hint-box {
+      background: linear-gradient(160deg, #fff 40%, #fff8e8);
+      border: 1px solid #f0d89a; border-radius: 12px; padding: .6rem .85rem;
+    }
+    .agenda-foot .hint-box h3 { color: #8a6a00; font-size: .78rem; margin-bottom: .25rem; }
+    .pill {
+      display: inline-block; border: 1px solid var(--line); border-radius: 999px;
+      padding: .12rem .55rem; font-size: .72rem; color: var(--muted); margin: .1rem .2rem .1rem 0;
+      background: #fff;
+    }
+    .pill.hot { border-color: var(--hust-red); color: var(--hust-red); background: #fce8eb; }
+    .pill.warn { border-color: var(--hust-gold); color: #8a6a00; background: #fff6e0; }
+    .pill.bad { border-color: var(--danger); color: var(--danger); background: #fdecea; }
+    .flow { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+    .flow .step {
+      background: #fff; border: 1px solid var(--line); border-radius: 8px;
+      padding: .4rem .55rem; font-size: .78rem; font-family: var(--mono);
+    }
+    .flow .step.focus { border-color: var(--hust-red); box-shadow: 0 0 0 1px rgba(191,32,52,.25); }
+    .flow .arrow { color: var(--muted); }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .84rem; }
+    th, td { border-bottom: 1px solid var(--line); padding: .42rem .4rem; text-align: left; }
+    th {
+      color: var(--muted); font-weight: 650; font-size: .72rem;
+      background: #f3f3f5; letter-spacing: .02em;
+    }
+    tr:last-child td { border-bottom: none; }
+    code, .mono {
+      font-family: var(--mono); font-size: .86em;
+      background: #f3f3f5; padding: .05rem .28rem; border-radius: 4px;
+    }
+    .metric { font-family: var(--font); font-size: 2rem; color: var(--hust-red); line-height: 1; font-weight: 800; letter-spacing: -.02em; }
+    .metric small { display: block; font-family: var(--sans); font-size: .74rem; color: var(--muted); margin-top: .35rem; font-weight: 500; letter-spacing: 0; }
+    ul.tight, ol.tight { margin: 0; padding-left: 1.05rem; }
+    ul.tight li, ol.tight li { margin: .18rem 0; }
+    .footer-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      padding: .45rem 1rem; border-top: 1px solid #333;
+      background: #161616; font-size: .75rem; color: #aaa;
+    }
+    .progress { flex: 1; height: 3px; background: #333; border-radius: 99px; overflow: hidden; max-width: 240px; }
+    .progress > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--hust-red), var(--hust-gold)); transition: width .2s ease; }
+    .hint-keys kbd {
+      font-family: var(--mono); border: 1px solid #444; border-radius: 5px;
+      padding: .06rem .28rem; background: #222; color: #ddd;
+    }
+    .time { color: var(--hust-gold); font-weight: 700; font-size: .78rem; }
+    .title-meta { color: var(--muted); margin: 0; }
+    .big-quote {
+      font-family: var(--font); font-size: clamp(1.05rem, 2vh, 1.4rem);
+      line-height: 1.35; max-width: 40rem; margin: 0;
+      border-left: 3px solid var(--hust-red); padding-left: .85rem; color: #222;
+    }
+    .note { color: var(--muted); font-size: .84rem; margin: 0; }
+    .math-display {
+      display: flex; align-items: center; justify-content: center;
+      margin: .15rem 0 .55rem;
+      padding: .7rem 1.1rem .85rem;
+      background: #fafafa;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow-x: auto;
+      min-height: 3.4rem;
+    }
+    .math-display mjx-container {
+      font-size: clamp(1.45rem, 3.6vh, 2.25rem) !important;
+      margin: 0 !important;
+      color: #111;
+    }
+    .compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: .65rem; align-items: center; }
+    .vs { color: var(--muted); font-weight: 700; text-align: center; }
+
+    .shot {
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+      background: #111; box-shadow: 0 8px 28px rgba(20,20,30,.1);
+    }
+    .shot img { display: block; width: 100%; height: auto; max-height: min(42vh, 380px); object-fit: cover; object-position: top left; }
+    .shot.tall img { max-height: min(48vh, 440px); object-fit: contain; background: #0d1117; }
+    .shot-cap { font-size: .74rem; color: var(--muted); margin: .28rem 0 0; }
+    .diagram {
+      width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px;
+      background: linear-gradient(180deg, #fafafa, #f0f0f2);
+      box-shadow: 0 4px 18px rgba(20,20,30,.05);
+    }
+    .diagram text { font-family: var(--sans); fill: #222; }
+    .diagram .muted { fill: #666; }
+    .diagram .accent { fill: var(--hust-red); }
+    .diagram .warn { fill: #a07800; }
+    .terminal {
+      background: #0d1117; border: 1px solid #30363d; border-radius: 12px; overflow: hidden;
+      font-family: var(--mono); font-size: .74rem; line-height: 1.4;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    }
+    .terminal code, .terminal .mono { background: transparent; padding: 0; }
+    .terminal .bar { display: flex; gap: 6px; padding: .45rem .65rem; background: #161b22; border-bottom: 1px solid #30363d; }
+    .terminal .dot { width: 9px; height: 9px; border-radius: 50%; }
+    .terminal .body { padding: .65rem .8rem; color: #c9d1d9; white-space: pre-wrap; }
+    .terminal .cmd { color: #79c0ff; }
+    .terminal .ok { color: #7ee787; }
+    .terminal .warn { color: #ffa657; }
+    .ui-mock {
+      border: 1px solid var(--line); border-radius: 10px; background: #fff; overflow: hidden;
+      min-height: 200px; display: grid; grid-template-columns: 140px 1fr;
+      box-shadow: 0 4px 16px rgba(0,0,0,.06);
+    }
+    .ui-side { background: #f3f3f5; border-right: 1px solid var(--line); padding: .7rem; font-size: .74rem; }
+    .ui-side .nav { color: var(--muted); margin: .28rem 0; padding: .3rem .4rem; border-radius: 6px; }
+    .ui-side .nav.on { background: #fce8eb; color: var(--hust-red); font-weight: 650; }
+    .ui-main { padding: .7rem; }
+    .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; margin-bottom: .55rem; }
+    .kpi .k { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: .4rem; }
+    .kpi .n { font-family: var(--font); font-size: 1.15rem; color: var(--hust-red); font-weight: 800; }
+    .kpi .l { font-size: .65rem; color: var(--muted); }
+    .alert-row {
+      display: flex; gap: .45rem; align-items: center; font-size: .7rem;
+      border: 1px solid #f0c0c4; background: #fdf2f3;
+      border-radius: 6px; padding: .32rem .45rem; margin: .22rem 0;
+    }
+    .badge { font-size: .62rem; font-weight: 700; padding: .1rem .35rem; border-radius: 999px; }
+    .badge.crit { background: var(--hust-red); color: #fff; }
+    .badge.high { background: #c47a1a; color: #fff; }
+    .badge.med { background: #2f6fed; color: #fff; }
+    .matrix {
+      display: grid; grid-template-columns: 78px 1fr 1fr; gap: .4rem; font-size: .8rem; align-items: center;
+    }
+    .matrix .cell {
+      border: 1px solid var(--line); border-radius: 10px; padding: .7rem .55rem; text-align: center; background: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+    }
+    .matrix .tp { border-color: #9ccc9c; background: #f1faf1; }
+    .matrix .fp { border-color: #f0a8a8; background: #fdf2f2; }
+    .matrix .fn { border-color: #e6d08a; background: #fffbef; }
+    .matrix .tn { border-color: var(--line); }
+    .thumb-row { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+    .caption-row { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+
+    .slide.content > .eyebrow { margin-bottom: .1rem; }
+    .slide.content > h2 { margin-bottom: .2rem; }
+    .slide.dense { gap: .45rem; }
+    .card.metric-card { text-align: center; padding: 1.15rem .9rem 1.2rem; }
+    .card.metric-card::before {
+      width: 100%; height: 3px; bottom: auto; top: 0; left: 0;
+      background: linear-gradient(90deg, var(--hust-red), var(--hust-gold));
+    }
+    .compare .card { min-height: 100%; }
+    /* Giữ lưới agenda ổn định trên khung 16:9 (không phụ thuộc viewport hẹp của panel) */
+
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <div class="stage" id="stage">
+      <!-- 0 Cover HUST -->
+      <section class="slide cover active" data-min="0:00" data-sec="15">
+        <p class="cover-meta">IT6027 · Quản trị An ninh Mạng · Nhóm G21</p>
+        <span class="page-num"></span>
+      </section>
+
+
+
+      <!-- 1 Title -->
+      <section class="slide title-slide" data-min="0:15" data-sec="40">
+        <div class="brand-row">
+          <img src="hust-assets/logo-square.png" alt="Logo HUST" />
+          <div class="brand-txt">
+            <div class="vn">Đại học Bách khoa Hà Nội</div>
+            <div class="en">Hanoi University of Science and Technology</div>
+          </div>
+        </div>
+        <div class="title-block">
+          <h1>WAF Log Analyzer</h1>
+          <p class="lead">Phân tích access log Nginx phục vụ phát hiện và ứng phó tấn công web</p>
+          <p class="title-meta">Lê Quang Huy — 20261106M · Nhóm G21 · IT6027</p>
+          <div style="margin-top:.85rem;">
+            <span class="pill hot">Phát hiện</span>
+            <span class="pill warn">Ứng phó</span>
+            <span class="pill">SQLi · XSS · Path</span>
+            <span class="pill">Bảo vệ ~10–13 phút</span>
+          </div>
+        </div>
+        <p class="slogan">ONE LOVE. ONE FUTURE.</p>
+        <span class="page-num"></span>
+      </section>
+
+      <!-- 2 Agenda -->
+      <section class="slide content dense" data-min="0:40" data-sec="40">
+        <p class="eyebrow">Nội dung trình bày</p>
+        <h2>Cấu trúc bài bảo vệ (~10–13 phút)</h2>
+        <div class="agenda-grid">
+          <article class="cube">
+            <span class="cube-idx">01</span>
+            <p class="cube-title">Bối cảnh và kiến trúc hệ thống</p>
+          </article>
+          <article class="cube">
+            <span class="cube-idx">02</span>
+            <p class="cube-title">Phạm vi tấn công được xét</p>
+          </article>
+          <article class="cube hot">
+            <span class="cube-idx">03</span>
+            <p class="cube-title">Nguồn rule, điểm rủi ro và chính sách sự cố</p>
+          </article>
+          <article class="cube warn">
+            <span class="cube-idx">04</span>
+            <p class="cube-title">Kết quả đánh giá (Juice, Benchmark)</p>
+          </article>
+          <article class="cube">
+            <span class="cube-idx">05</span>
+            <p class="cube-title">Minh họa thực nghiệm trên lab</p>
+          </article>
+          <article class="cube">
+            <span class="cube-idx">06</span>
+            <p class="cube-title">Hạn chế và hướng phát triển</p>
+          </article>
+        </div>
+        <div class="agenda-foot">
+          <div class="quote-box">
+            <h3>Định vị đề tài</h3>
+            <p class="big-quote">Hệ thống phát hiện <em>nỗ lực tấn công</em> từ access log Nginx — không chặn inline như WAF CRS, cũng không quét mã nguồn để kết luận lỗ hổng.</p>
+          </div>
+          <div class="hint-box">
+            <h3>Điểm nhấn cần thuộc</h3>
+            <p class="note" style="margin:0;">Ngưỡng Alert = 60.<br/>Benchmark adaptation: điểm = 0 vì TPR = FPR = 1.</p>
+          </div>
+        </div>
+        <span class="page-num"></span>
+      </section>
+
+      <!-- 3 Problem -->
+      <section class="slide content" data-min="1:15" data-sec="45">
+        <p class="eyebrow">1. Đặt vấn đề</p>
+        <h2>Từ nhật ký truy cập tới vòng phát hiện — ứng phó</h2>
+        <div class="grid-3">
+          <div class="card">
+            <span class="cube-idx" style="display:block;margin-bottom:.35rem;">01</span>
+            <h3>Bài toán</h3>
+            <p style="margin:0;font-size:.92rem;">SQLi, XSS và path traversal để lại dấu vết trên access log, nhưng thiếu quy trình tái lập: phát hiện, cảnh báo, nhóm sự cố và hỗ trợ điều tra.</p>
+          </div>
+          <div class="card">
+            <span class="cube-idx" style="display:block;margin-bottom:.35rem;">02</span>
+            <h3>Hạn chế hiện trạng</h3>
+            <ul class="tight"><li>Thiếu chuỗi bằng chứng theo thời gian</li><li>Cảnh báo rời rạc, khó ưu tiên</li><li>Khó gắn với Detect / Respond (NIST CSF)</li></ul>
+          </div>
+          <div class="card">
+            <span class="cube-idx" style="display:block;margin-bottom:.35rem;">03</span>
+            <h3>Mục tiêu đề tài</h3>
+            <ul class="tight"><li>Bộ 14 rule đã đánh giá offline + điểm rủi ro</li><li>Alert và Incident có chính sách rõ</li><li>Bảng điều khiển SOC (REST, SSE)</li><li>Đo lường trên lab có nhãn</li></ul>
+          </div>
+        </div>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 4 Architecture diagram -->
+      <section class="slide content dense" data-min="2:00" data-sec="55">
+        <p class="eyebrow">2. Kiến trúc</p>
+        <div class="caption-row"><h2>Docker Network</h2><span class="pill hot">waf-net</span></div>
+        <svg class="diagram" viewBox="0 0 960 320" role="img" aria-label="Kiến trúc hệ thống">
+          <defs>
+            <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9a9aa3"/></marker>
+          </defs>
+          <rect x="20" y="120" width="100" height="56" rx="10" fill="#ffffff" stroke="#bf2034"/>
+          <text x="70" y="145" text-anchor="middle" font-size="13">Client</text>
+          <text x="70" y="162" text-anchor="middle" font-size="11" class="muted">probe</text>
+
+          <rect x="150" y="100" width="120" height="96" rx="10" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="210" y="130" text-anchor="middle" font-size="13">Nginx</text>
+          <text x="210" y="148" text-anchor="middle" font-size="11" class="muted">proxy</text>
+          <text x="210" y="166" text-anchor="middle" font-size="11" class="accent">JSON log</text>
+
+          <rect x="300" y="40" width="110" height="50" rx="10" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="355" y="70" text-anchor="middle" font-size="12">Juice Shop</text>
+
+          <rect x="300" y="200" width="110" height="50" rx="10" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="355" y="230" text-anchor="middle" font-size="12">Filebeat</text>
+
+          <rect x="450" y="120" width="110" height="56" rx="10" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="505" y="145" text-anchor="middle" font-size="13">Kafka</text>
+          <text x="505" y="162" text-anchor="middle" font-size="10" class="muted">raw-web-logs</text>
+
+          <rect x="600" y="100" width="140" height="96" rx="10" fill="#ffffff" stroke="#e59c0a"/>
+          <text x="670" y="130" text-anchor="middle" font-size="13" class="warn">Spring Boot</text>
+          <text x="670" y="148" text-anchor="middle" font-size="11" class="muted">ingest · detect</text>
+          <text x="670" y="166" text-anchor="middle" font-size="11" class="muted">score · correlate</text>
+
+          <rect x="780" y="40" width="150" height="50" rx="10" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="855" y="70" text-anchor="middle" font-size="12">PostgreSQL</text>
+
+          <rect x="780" y="120" width="150" height="50" rx="10" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="855" y="150" text-anchor="middle" font-size="12">Redis cache</text>
+
+          <rect x="780" y="200" width="150" height="56" rx="10" fill="#ffffff" stroke="#bf2034"/>
+          <text x="855" y="225" text-anchor="middle" font-size="12">React SOC</text>
+          <text x="855" y="242" text-anchor="middle" font-size="10" class="accent">REST + SSE</text>
+
+          <line x1="120" y1="148" x2="150" y2="148" stroke="#9a9aa3" marker-end="url(#arr)"/>
+          <line x1="270" y1="130" x2="300" y2="75" stroke="#9a9aa3" marker-end="url(#arr)"/>
+          <line x1="270" y1="170" x2="300" y2="220" stroke="#9a9aa3" marker-end="url(#arr)"/>
+          <line x1="410" y1="225" x2="450" y2="160" stroke="#9a9aa3" marker-end="url(#arr)"/>
+          <line x1="560" y1="148" x2="600" y2="148" stroke="#9a9aa3" marker-end="url(#arr)"/>
+          <line x1="740" y1="120" x2="780" y2="70" stroke="#9a9aa3" marker-end="url(#arr)"/>
+          <line x1="740" y1="148" x2="780" y2="145" stroke="#9a9aa3" marker-end="url(#arr)"/>
+          <line x1="740" y1="180" x2="780" y2="220" stroke="#9a9aa3" marker-end="url(#arr)"/>
+          <!-- <text x="480" y="300" text-anchor="middle" font-size="12" class="muted">Phát hiện ngoài băng · không chặn HTTP</text> -->
+        </svg>
+        <p class="shot-cap">Nginx vừa proxy vừa ghi log; Spring Boot thực hiện phân tích và tương quan.</p>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 5 Stack -->
+      <section class="slide content" data-min="2:55" data-sec="35">
+        <p class="eyebrow">2. Thành phần kỹ thuật</p>
+        <h2>Phiên bản phần mềm và cổng dịch vụ lab</h2>
+        <div class="grid-2">
+          <table>
+            <tr><th>Lớp</th><th>Version</th></tr>
+            <tr><td>Nginx / Juice</td><td>1.27 · v20.1.1</td></tr>
+            <tr><td>Filebeat / Kafka</td><td>8.17 · 4.1.2</td></tr>
+            <tr><td>Java / Spring</td><td>25 · Boot 4.1.1</td></tr>
+            <tr><td>Postgres / Redis</td><td>16 · 7.4</td></tr>
+            <tr><td>React / Vite</td><td>19 · 6</td></tr>
+          </table>
+          <div class="card">
+            <h3>Cổng và đăng nhập lab</h3>
+            <ul class="tight">
+              <li><code>:80</code> Nginx · <code>:3001</code> SOC</li>
+              <li><code>:8080</code> API · JWT HS256</li>
+              <li><code>admin/admin</code></li>
+              <li><code>make stack-ui</code> · <code>make down</code> · <code>make destroy</code></li>
+            </ul>
+          </div>
+        </div>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 6 Threat -->
+      <section class="slide content" data-min="3:30" data-sec="45">
+        <p class="eyebrow">3. Phạm vi tấn công</p>
+        <h2>Ba lớp tấn công được đưa vào phạm vi</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>SQLi</h3>
+            <div class="terminal"><div class="bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span></div><div class="body"><span class="cmd">?</span>q=<span class="warn">1 OR 1=1 UNION SELECT 1</span></div></div>
+            <p class="note" style="margin-top:.5rem;">Boolean · UNION · TIME · stacked</p>
+          </div>
+          <div class="card">
+            <h3>XSS</h3>
+            <div class="terminal"><div class="bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span></div><div class="body"><span class="cmd">?</span>q=<span class="warn">&lt;script&gt;javascript:…</span></div></div>
+            <p class="note" style="margin-top:.5rem;">Tag · onerror · javascript:</p>
+          </div>
+          <div class="card">
+            <h3>Path Traversal</h3>
+            <div class="terminal"><div class="bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span></div><div class="body"><span class="cmd">?</span>file=<span class="warn">../../etc/passwd%2e%2e%2f</span></div></div>
+            <p class="note" style="margin-top:.5rem;">Chuỗi <code>../</code> và biến thể mã hóa trên path/query</p>
+          </div>
+        </div>
+        <p class="lead">Hệ thống ghi nhận <strong>nỗ lực tấn công</strong> trên nhật ký. Việc vá lỗ hổng vẫn thuộc trách nhiệm tầng ứng dụng.</p>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 7 Hero flow intro + sequence SVG -->
+      <section class="slide content dense" data-min="4:15" data-sec="40">
+        <p class="eyebrow time">4. Luồng xử lý chính</p>
+        <h2>Từ yêu cầu HTTP tới cảnh báo và sự cố</h2>
+        <p class="lead">Ví dụ: BOOLEAN + UNION → điểm 95 → <span class="badge crit">CRITICAL</span> → mở Incident ngay (IMMEDIATE)</p>
+        <svg class="diagram" viewBox="0 0 960 250" aria-label="Sequence phát hiện">
+          <defs>
+            <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9a9aa3"/></marker>
+          </defs>
+          <text x="40" y="28" font-size="12" class="muted">Client</text>
+          <text x="160" y="28" font-size="12" class="muted">Nginx</text>
+          <text x="280" y="28" font-size="12" class="muted">Filebeat</text>
+          <text x="400" y="28" font-size="12" class="muted">Kafka</text>
+          <text x="520" y="28" font-size="12" class="muted">Spring</text>
+          <text x="660" y="28" font-size="12" class="muted">Postgres</text>
+          <text x="800" y="28" font-size="12" class="muted">SOC UI</text>
+          <g stroke="#cfcfd4" stroke-dasharray="3 4">
+            <line x1="55" y1="40" x2="55" y2="230"/><line x1="175" y1="40" x2="175" y2="230"/>
+            <line x1="295" y1="40" x2="295" y2="230"/><line x1="415" y1="40" x2="415" y2="230"/>
+            <line x1="535" y1="40" x2="535" y2="230"/><line x1="675" y1="40" x2="675" y2="230"/>
+            <line x1="815" y1="40" x2="815" y2="230"/>
+          </g>
+          <g stroke="#bf2034" stroke-width="1.5" fill="none">
+            <path d="M55 60 H170" marker-end="url(#arr2)"/>
+            <path d="M175 85 H290" marker-end="url(#arr2)"/>
+            <path d="M295 110 H410" marker-end="url(#arr2)"/>
+            <path d="M415 135 H530" marker-end="url(#arr2)"/>
+            <path d="M535 160 H670" marker-end="url(#arr2)"/>
+            <path d="M535 185 H670" marker-end="url(#arr2)"/>
+            <path d="M535 210 H810" marker-end="url(#arr2)"/>
+          </g>
+          <text x="100" y="55" font-size="11" class="accent">HTTP attack</text>
+          <text x="200" y="80" font-size="11">JSON line</text>
+          <text x="320" y="105" font-size="11">raw-web-logs</text>
+          <text x="450" y="130" font-size="11">consume</text>
+          <text x="580" y="155" font-size="11" class="warn">WebEvent + hits</text>
+          <text x="580" y="180" font-size="11" class="warn">Alert / Incident</text>
+          <text x="650" y="205" font-size="11" class="accent">SSE notice</text>
+        </svg>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 8 Activity style -->
+      <section class="slide content dense" data-min="4:55" data-sec="50">
+        <p class="eyebrow">4. Quyết định trong pipeline</p>
+        <h2>Sơ đồ hoạt động (rút gọn)</h2>
+        <svg class="diagram" viewBox="0 0 960 280" aria-label="Activity diagram">
+          <rect x="20" y="20" width="140" height="44" rx="20" fill="#ffffff" stroke="#bf2034"/>
+          <text x="90" y="47" text-anchor="middle" font-size="12">HTTP → Nginx</text>
+          <rect x="190" y="20" width="150" height="44" rx="10" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="265" y="47" text-anchor="middle" font-size="12">Log + Filebeat</text>
+          <rect x="370" y="20" width="150" height="44" rx="10" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="445" y="47" text-anchor="middle" font-size="12">Parse + Event</text>
+          <polygon points="600,42 660,20 720,42 660,64" fill="#ffffff" stroke="#e59c0a"/>
+          <text x="660" y="46" text-anchor="middle" font-size="11" class="warn">Log OK?</text>
+          <rect x="780" y="20" width="150" height="44" rx="10" fill="#ffffff" stroke="#bf2034"/>
+          <text x="855" y="47" text-anchor="middle" font-size="12">Skip warning</text>
+
+          <rect x="370" y="110" width="150" height="44" rx="10" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="445" y="137" text-anchor="middle" font-size="12">Match 14 rules</text>
+          <rect x="190" y="110" width="150" height="44" rx="10" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="265" y="137" text-anchor="middle" font-size="12">RiskScorer</text>
+          <polygon points="40,132 100,110 160,132 100,154" fill="#ffffff" stroke="#e59c0a"/>
+          <text x="100" y="136" text-anchor="middle" font-size="11" class="warn">≥60?</text>
+
+          <rect x="190" y="200" width="150" height="44" rx="10" fill="#ffffff" stroke="#e59c0a"/>
+          <text x="265" y="227" text-anchor="middle" font-size="12">Tạo Alert</text>
+          <polygon points="400,222 470,200 540,222 470,244" fill="#ffffff" stroke="#bf2034"/>
+          <text x="470" y="226" text-anchor="middle" font-size="11">CRIT / K?</text>
+          <rect x="600" y="200" width="150" height="44" rx="10" fill="#ffffff" stroke="#bf2034"/>
+          <text x="675" y="227" text-anchor="middle" font-size="12">Incident OPEN</text>
+          <rect x="780" y="200" width="150" height="44" rx="20" fill="#ffffff" stroke="#bf2034"/>
+          <text x="855" y="227" text-anchor="middle" font-size="12">SSE → SOC</text>
+
+          <g stroke="#9a9aa3" fill="none" stroke-width="1.2">
+            <path d="M160 42 H190"/><path d="M340 42 H370"/><path d="M520 42 H600"/>
+            <path d="M720 42 H780"/><path d="M660 64 V110 H520"/><path d="M370 132 H340"/>
+            <path d="M190 132 H160"/><path d="M100 154 V222 H190"/><path d="M340 222 H400"/>
+            <path d="M540 222 H600"/><path d="M750 222 H780"/>
+          </g>
+        </svg>
+        <p class="note">CRITICAL mở sự cố ngay. MEDIUM/HIGH cần đủ K = 3 cảnh báo trong cửa sổ W = 5 phút cùng cặp (ứng dụng, địa chỉ IP).</p>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 9 Rule creation overview -->
+      <section class="slide content dense" data-min="5:45" data-sec="45">
+        <p class="eyebrow">5. Sinh rule · tổng quan</p>
+        <h2>Lab offline <code>detection-rule-generator/</code> — không nằm trên Kafka</h2>
+        <p class="lead">Mô hình ngôn ngữ <strong>không</strong> emit regex sản xuất một bước. Quy trình: dữ liệu → cụm → rule trừu tượng → biên dịch → cổng đánh giá → seed Spring.</p>
+        <div class="flow" style="margin:.35rem 0 .5rem;">
+          <span class="step">Corpora</span><span class="arrow">→</span>
+          <span class="step">Cluster card</span><span class="arrow">→</span>
+          <span class="step focus">Abstract JSON</span><span class="arrow">→</span>
+          <span class="step">Compile regex</span><span class="arrow">→</span>
+          <span class="step focus">Evaluator</span><span class="arrow">→</span>
+          <span class="step">Flyway AI_MINED</span>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Nguồn dữ liệu (có sẵn)</h3>
+            <ul class="tight">
+              <li>HttpParamsDataset — benign + SQLi/XSS/path</li>
+              <li>FuzzDB — chỉ extract đúng category</li>
+              <li>SQLi CSV ~30&nbsp;000 mẫu trong repo</li>
+            </ul>
+            <p class="note" style="margin-top:.45rem;">Chỉ dùng giá trị có nghĩa trên <code>path</code> / <code>query</code> / <code>ua</code> / <code>raw</code> — không dựa POST body.</p>
+          </div>
+          <div class="card">
+            <h3>Hai vai trò tách bạch</h3>
+            <table>
+              <tr><th></th><th>Offline</th><th>Runtime</th></tr>
+              <tr><td>Ai chạy</td><td>Python pipeline + prompt</td><td>Spring regex</td></tr>
+              <tr><td>Đầu ra</td><td>14 DetectionRule</td><td>Hit + điểm</td></tr>
+              <tr><td>Mô hình phát hiện?</td><td>Không</td><td><strong>Không</strong></td></tr>
+            </table>
+          </div>
+        </div>
+        <span class="page-num"></span>
+      </section>
+
+      <!-- 9b Step-by-step AI abstract -->
+      <section class="slide content dense" data-min="6:30" data-sec="55">
+        <p class="eyebrow">5. Sinh rule · từng bước</p>
+        <h2>Từ cụm payload tới abstract rule (ví dụ BOOLEAN)</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Bước pipeline (Python — không gọi mô hình)</h3>
+            <ol class="tight">
+              <li><code>ingest / normalize / dedupe</code></li>
+              <li><code>split</code> — ~70% generation / ~30% held-out (AI không thấy held-out)</li>
+              <li><code>cluster</code> → thẻ gọn, ví dụ <code>SQLI-BOOLEAN_TAUTOLOGY.json</code> (~6&nbsp;338 mẫu)</li>
+              <li>Thẻ chứa vài positive/negative + nguồn — <em>không</em> dán cả corpus vào prompt</li>
+            </ol>
+            <h3 style="margin-top:.55rem;">Bước có hỗ trợ mô hình (Cursor + prompt)</h3>
+            <ol class="tight" start="5">
+              <li>Đính kèm <code>rule-generator.md</code> + <strong>một</strong> cluster card</li>
+              <li>Mô hình chỉ xuất JSON trừu tượng: <code>type</code>, <code>conditions</code>, <code>suggested_weight</code>, ví dụ ±</li>
+              <li>Lưu <code>ai/outputs/SQLI-BOOLEAN-001.json</code> — <strong>chưa</strong> có regex sản xuất</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>Abstract (rút gọn thật)</h3>
+            <div class="terminal">
+              <div class="bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span></div>
+              <div class="body">{
+  "id": "SQLI-BOOLEAN-001",
+  "type": "BOOLEAN_TAUTOLOGY",
+  "conditions": ["SQL_BOOLEAN_OPERATOR",
+                 "COMPARISON_EXPRESSION", "TAUTOLOGY"],
+  "suggested_target_field": "query",
+  "suggested_weight": 40,
+  "positive_examples": ["or 1 = 1 --", …],
+  "negative_examples": ["standard", "order=asc"]
+}</div>
+            </div>
+            <p class="note" style="margin-top:.45rem;">Ràng buộc prompt: không overfit một payload; không emit regex Java cuối cùng.</p>
+          </div>
+        </div>
+        <span class="page-num"></span>
+      </section>
+
+      <!-- 9c Compile + verify -->
+      <section class="slide content dense" data-min="7:25" data-sec="55">
+        <p class="eyebrow">5. Sinh rule · biên dịch và cổng kiểm</p>
+        <h2>Compiler map type → regex; evaluator quyết định có seed hay không</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Biên dịch (<code>pipeline compile</code>)</h3>
+            <ul class="tight">
+              <li><code>type</code> / template → pattern Java (ví dụ BOOLEAN → <code>(?i)(\bor\b|\band\b)…\d+=\d+</code>)</li>
+              <li>Kiểm cú pháp an toàn với Java <code>Pattern</code></li>
+              <li>Ghi <code>rules/candidates/</code> với <code>source = AI_MINED</code></li>
+            </ul>
+            <h3 style="margin-top:.55rem;">Nếu FPR cao / bỏ sót</h3>
+            <p class="note" style="margin:0;">Dùng prompt reviewer / optimizer → sửa abstract → compile lại — không sửa weight runtime “theo cảm tính”.</p>
+          </div>
+          <div class="card">
+            <h3>Cổng đánh giá (<code>pipeline evaluate</code>)</h3>
+            <table>
+              <tr><th>Tập</th><th>Đo gì</th></tr>
+              <tr><td>Held-out (tấn công)</td><td>TP / recall theo category</td></tr>
+              <tr><td>Benign (HttpParams)</td><td>FP → FPR</td></tr>
+              <tr><td>Adversarial</td><td>Coverage biến thể mã hóa</td></tr>
+            </table>
+            <p class="note" style="margin-top:.45rem;"><strong>Đạt cổng khi:</strong> precision ≥ 0,80 · FPR ≤ 0,02 · có ít nhất một hit hữu hiệu.</p>
+            <p class="note" style="margin:0;">14/14 đạt → <code>rules/production/</code> → Flyway V2. Báo cáo: precision 1,0; FPR lành 0; coverage held-out ~50% / 68% / 48%.</p>
+          </div>
+        </div>
+        <span class="page-num"></span>
+      </section>
+
+      <!-- 9d What evaluates the ruleset -->
+      <section class="slide content dense" data-min="8:20" data-sec="50">
+        <p class="eyebrow">5. Sinh rule · Benchmark có phải đánh giá bộ rule?</p>
+        <h2>Không — ba tầng trả lời ba câu hỏi khác nhau</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>A · Offline (đúng nghĩa đánh giá rule)</h3>
+            <p class="note" style="margin:0 0 .35rem;">Regex có khớp payload trên corpus không?</p>
+            <ul class="tight">
+              <li>Held-out + benign + adversarial</li>
+              <li>Cổng precision / FPR trước khi seed</li>
+              <li><strong>Đây là bằng chứng chất lượng bộ rule</strong></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>B · Juice (đánh giá pipeline Alert)</h3>
+            <p class="note" style="margin:0 0 .35rem;">Request lab có nhãn có mở Alert (≥ 60) không?</p>
+            <ul class="tight">
+              <li>Gồm rule + score + ngưỡng</li>
+              <li>Recall 0,774 · FP = 0</li>
+              <li>Không thay thế cổng offline</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Benchmark (không phải cổng rule)</h3>
+            <p class="note" style="margin:0 0 .35rem;">Công cụ có phân biệt mã lỗ hổng / an toàn không?</p>
+            <ul class="tight">
+              <li>Adaptation: payload tấn công cố định</li>
+              <li>Điểm 0 = lệch câu hỏi, không = “rule hỏng”</li>
+              <li><strong>Không dùng làm cổng chấp nhận bộ rule</strong></li>
+            </ul>
+          </div>
+        </div>
+        <p class="lead" style="margin-top:.45rem;">Kết luận bảo vệ: chất lượng chữ ký chứng minh ở tầng A; Juice kiểm runtime; Benchmark minh họa giới hạn ontology — báo cáo riêng.</p>
+        <span class="page-num"></span>
+      </section>
+
+      <!-- 10 Score origin: rule weights -->
+      <section class="slide content dense" data-min="9:10" data-sec="45">
+        <p class="eyebrow">5. Trọng số rule sau khi nạp</p>
+        <h2>Mỗi lần khớp rule góp một trọng số cố định</h2>
+        <p class="lead">Giá trị <code>detection_hit.weight</code> lấy từ bảng rule (Flyway V2, <code>AI_MINED</code>). Điểm rủi ro là tổng trọng số (cộng hệ số bổ sung) — không do mô hình ngôn ngữ gán lúc chạy.</p>
+        <div class="grid-3">
+          <div class="card">
+            <h3>SQLI (6) · query</h3>
+            <table>
+              <tr><th>Rule</th><th>W</th></tr>
+              <tr><td>BOOLEAN-001/002</td><td>40</td></tr>
+              <tr><td>COMMENT-001</td><td>35</td></tr>
+              <tr><td>STACKED-001</td><td>50</td></tr>
+              <tr><td>UNION-001</td><td>55</td></tr>
+              <tr><td>TIME-001</td><td>60</td></tr>
+            </table>
+          </div>
+          <div class="card">
+            <h3>XSS (4) · query</h3>
+            <table>
+              <tr><th>Rule</th><th>W</th></tr>
+              <tr><td>ENCODED-001</td><td>40</td></tr>
+              <tr><td>EVENT-001</td><td>45</td></tr>
+              <tr><td>JSURI-001</td><td>50</td></tr>
+              <tr><td>SCRIPT-001</td><td>55</td></tr>
+            </table>
+          </div>
+          <div class="card">
+            <h3>PATH (4) · path</h3>
+            <table>
+              <tr><th>Rule</th><th>W</th></tr>
+              <tr><td>DOTDOT / BACKSLASH</td><td>45</td></tr>
+              <tr><td>ENCODED</td><td>50</td></tr>
+              <tr><td>DOUBLE</td><td>55</td></tr>
+            </table>
+            <!-- <p class="note" style="margin-top:.5rem;">Một rule có trọng số &lt; 60 thường <strong>chưa</strong> đủ để mở Alert nếu đứng riêng.</p> -->
+          </div>
+        </div>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 11 Score formula -->
+      <section class="slide content dense" data-min="7:30" data-sec="55">
+        <p class="eyebrow">5. Công thức điểm rủi ro</p>
+        <h2>Điểm rủi ro của sự kiện</h2>
+        <div class="math-display" aria-label="Cong thuc diem rui ro">
+          \[
+            S(e)=\min\!\left(100,\sum_{h\in H_e}w_h+B_{\mathrm{freq}}+B_{\mathrm{status}}\right).
+          \]
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Ký hiệu (<code>RiskScorer</code>)</h3>
+            <table>
+              <tr><th>Ký hiệu</th><th>Ý nghĩa / cách tính</th></tr>
+              <tr><td><strong>∑ w<sub>h</sub></strong></td><td>Tổng trọng số mọi hit trên sự kiện <em>e</em> (capped 100 ở lớp base)</td></tr>
+              <tr><td><strong>B<sub>freq</sub></strong></td><td>Hit cùng <code>client_ip</code> trong 5 phút: count &lt; 2 → 0; ngược lại min(20, 2×(count−1))</td></tr>
+              <tr><td><strong>B<sub>status</sub></strong></td><td>+5 nếu HTTP ∈ {403, 404, 500} và tổng trọng số &gt; 0; ngược lại 0</td></tr>
+            </table>
+            <p class="note" style="margin-top:.5rem;">Ghi <code>web_events.risk_score</code> trước khi xét mở Alert.</p>
+          </div>
+          <div class="card">
+            <h3>Ví dụ tính tay</h3>
+            <div class="terminal">
+              <div class="bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span></div>
+              <div class="body">q=<span class="warn">1 OR 1=1 UNION SELECT 1</span>
+HTTP 200 · IP mới (1 hit window)
+
+BOOLEAN-001     <span class="ok">+40</span>
+UNION-001       <span class="ok">+55</span>
+Σ w_h           = 95
+B_freq          = 0
+B_status        = 0
+─────────────────
+<span class="warn">S(e) = 95 → CRITICAL</span></div>
+            </div>
+            <p class="note" style="margin-top:.55rem;">Ví dụ MEDIUM: chỉ TIME (+60). Ví dụ HIGH: BOOLEAN + COMMENT (40 + 35 = 75).</p>
+          </div>
+        </div>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 12 Severity bands -->
+      <section class="slide content" data-min="8:25" data-sec="35">
+        <p class="eyebrow">5. Mức nghiêm trọng</p>
+        <h2>Ánh xạ điểm rủi ro sang mức nghiêm trọng</h2>
+        <div class="grid-2">
+          <table>
+            <tr><th>Mức</th><th>Khoảng điểm</th><th>Ý nghĩa vận hành</th></tr>
+            <tr><td><span class="badge med">LOW</span></td><td>&lt; 40</td><td>Có thể có hit nhẹ; <strong>không</strong> mở Incident</td></tr>
+            <tr><td><span class="badge med">MEDIUM</span></td><td>40–69</td><td>Alert nếu ≥ ngưỡng 60; chờ gom theo AGGREGATE</td></tr>
+            <tr><td><span class="badge high">HIGH</span></td><td>70–84</td><td>Alert; chờ đủ K = 3 cùng IP/ứng dụng</td></tr>
+            <tr><td><span class="badge crit">CRITICAL</span></td><td>≥ 85</td><td>Alert và mở Incident <strong>ngay</strong></td></tr>
+          </table>
+          <div class="card">
+            <h3>Phân biệt hai ngưỡng</h3>
+            <ul class="tight">
+              <li>Mức nghiêm trọng gắn trên <strong>Alert</strong> theo điểm cuối.</li>
+              <li>Ngưỡng mở Alert (<code>risk_threshold</code>, mặc định <strong>60</strong>) khác với biên LOW/MEDIUM.</li>
+              <li>Điểm 55 (chỉ UNION) → <em>không</em> tạo Alert.</li>
+              <li>Điểm 60 (TIME) → Alert mức MEDIUM.</li>
+            </ul>
+          </div>
+        </div>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 12 Alert policy -->
+      <section class="slide content dense" data-min="8:20" data-sec="50">
+        <p class="eyebrow">6. Chính sách Alert</p>
+        <h2>Điều kiện mở cảnh báo (<code>AlertService</code>)</h2>
+        <div class="grid-2">
+          <div class="card">
+            <ol class="tight">
+              <li>Lấy <code>risk_score</code> đã tính trên WebEvent</li>
+              <li>Đối chiếu <code>risk_threshold</code> của ứng dụng (mặc định <strong>60</strong>)</li>
+              <li>Nếu điểm &lt; ngưỡng → <strong>không</strong> mở Alert (vẫn lưu sự kiện và hit)</li>
+              <li>Mỗi <code>event_id</code> tối đa một Alert</li>
+              <li>Ghi Alert (mức, điểm, tiêu đề, tóm tắt, trạng thái OPEN)</li>
+              <li>Gọi <code>IncidentManager.promote</code></li>
+              <li>Phát thông báo SSE sau khi giao dịch hoàn tất</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>Lý do chọn ngưỡng 60</h3>
+            <ul class="tight">
+              <li>Giảm cảnh báo nhiễu khi chỉ khớp một rule nhẹ (35–55)</li>
+              <li>Yêu cầu payload đủ mạnh hoặc kết hợp nhiều mẫu</li>
+              <li>Có thể điều chỉnh theo từng Application</li>
+            </ul>
+            <p class="note" style="margin-top:.6rem;">Ví dụ tiêu đề: <code>CRITICAL 95 172.18.0.1 /rest/products/search</code></p>
+          </div>
+        </div>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 13 Incident policy -->
+      <section class="slide content dense" data-min="9:10" data-sec="65">
+        <p class="eyebrow">6. Chính sách Incident</p>
+        <h2>Mở mới hoặc gắn Alert vào sự cố đang mở</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Tham số cấu hình</h3>
+            <table>
+              <tr><th>Tham số</th><th>Mặc định</th><th>Ý nghĩa</th></tr>
+              <tr><td><code>window-minutes</code></td><td><strong>5</strong></td><td>Cửa sổ tương quan W</td></tr>
+              <tr><td><code>aggregate-threshold</code></td><td><strong>3</strong></td><td>Ngưỡng K với MEDIUM/HIGH</td></tr>
+            </table>
+            <h3 style="margin-top:.7rem;">Khóa tương quan</h3>
+            <p><code>(application_id, client_ip)</code> và trạng thái OPEN trong cửa sổ W.</p>
+          </div>
+          <div class="card">
+            <h3>Thứ tự quyết định</h3>
+            <ol class="tight">
+              <li>Alert đã gắn Incident → không xử lý lại</li>
+              <li>Mức <strong>LOW</strong> → không mở sự cố</li>
+              <li>Đã có Incident OPEN cùng khóa, còn trong W → <strong>gắn</strong> Alert, cập nhật mức/điểm tối đa</li>
+              <li>Incident quá cửa sổ W → đóng tự động, coi như chưa có</li>
+              <li><strong>CRITICAL</strong> → mở Incident (<code>IMMEDIATE</code>)</li>
+              <li>MEDIUM/HIGH: nếu số Alert chưa gắn ≥ <strong>K = 3</strong> → mở Incident (<code>AGGREGATE</code>) và gắn cả nhóm</li>
+              <li>Ngược lại → Alert tạm thời đứng riêng, chờ thêm sự kiện</li>
+            </ol>
+          </div>
+        </div>
+        <p class="note">Mục tiêu vận hành: giảm số sự cố trùng lặp — không phải mọi Alert đều thành một Incident riêng.</p>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 14 Worked E2E policy -->
+      <section class="slide content dense" data-min="10:15" data-sec="50">
+        <p class="eyebrow">6. Ví dụ xuyên suốt</p>
+        <h2>Từ payload tới Incident OPEN</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>① Detect</h3>
+            <p class="mono" style="font-size:.78rem;">q=1 OR 1=1 UNION SELECT 1</p>
+            <ul class="tight">
+              <li>2 hits: 40 + 55</li>
+              <li>score = <strong>95</strong></li>
+              <li>95 ≥ 60 → tạo Alert</li>
+              <li>severity = CRITICAL</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>② Promote</h3>
+            <ul class="tight">
+              <li>CRITICAL → nhánh IMMEDIATE</li>
+              <li>Tạo Incident OPEN</li>
+              <li><code>promote_reason=IMMEDIATE</code></li>
+              <li>Giải thích = SKIPPED (tắt mô hình) hoặc PENDING</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>③ Bảng điều khiển</h3>
+            <ul class="tight">
+              <li>SSE đẩy Alert và Incident</li>
+              <li>Yêu cầu tiếp theo cùng IP → gắn vào Incident #1</li>
+              <li>Nhân viên xác nhận (ACK) hoặc đóng (CLOSED)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card" style="margin-top:.35rem;">
+          <strong>Trường hợp gom nhóm:</strong> ba Alert HIGH (điểm 75) từ cùng IP trong 5 phút, chưa có Incident → Alert thứ ba kích hoạt <span class="pill warn">AGGREGATE</span> và gắn cả ba.
+        </div>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 15 ERD mini -->
+      <section class="slide content dense" data-min="11:05" data-sec="35">
+        <p class="eyebrow">4. Mô hình dữ liệu</p>
+        <h2>Sơ đồ thực thể rút gọn cho luồng chính</h2>
+        <svg class="diagram" viewBox="0 0 960 260" aria-label="ERD">
+          <rect x="40" y="40" width="170" height="90" rx="8" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="55" y="65" font-size="13" class="warn">applications</text>
+          <text x="55" y="88" font-size="11" class="muted">id · host_pattern</text>
+          <text x="55" y="108" font-size="11" class="muted">risk_threshold</text>
+
+          <rect x="260" y="40" width="190" height="110" rx="8" fill="#ffffff" stroke="#bf2034"/>
+          <text x="275" y="65" font-size="13" class="accent">web_events</text>
+          <text x="275" y="88" font-size="11" class="muted">raw_ref · client_ip</text>
+          <text x="275" y="108" font-size="11" class="muted">path · query · ua</text>
+          <text x="275" y="128" font-size="11" class="muted">risk_score</text>
+
+          <rect x="500" y="20" width="180" height="80" rx="8" fill="#ffffff" stroke="#cfcfd4"/>
+          <text x="515" y="45" font-size="13">detection_hits</text>
+          <text x="515" y="68" font-size="11" class="muted">evidence · weight</text>
+
+          <rect x="500" y="130" width="180" height="80" rx="8" fill="#ffffff" stroke="#e59c0a"/>
+          <text x="515" y="155" font-size="13" class="warn">alerts</text>
+          <text x="515" y="178" font-size="11" class="muted">severity · score</text>
+          <text x="515" y="198" font-size="11" class="muted">event_id unique</text>
+
+          <rect x="730" y="90" width="190" height="100" rx="8" fill="#ffffff" stroke="#bf2034"/>
+          <text x="745" y="120" font-size="13">incidents</text>
+          <text x="745" y="143" font-size="11" class="muted">status OPEN/ACK</text>
+          <text x="745" y="163" font-size="11" class="muted">promote_reason</text>
+          <text x="745" y="183" font-size="11" class="muted">(app_id, client_ip)</text>
+
+          <g stroke="#9a9aa3" fill="none"><path d="M210 85 H260"/><path d="M450 80 H500"/><path d="M450 120 V170 H500"/><path d="M680 170 H730"/></g>
+        </svg>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 16 Demo terminal -->
+      <section class="slide content" data-min="11:40" data-sec="30">
+        <p class="eyebrow">7. Minh họa thực nghiệm</p>
+        <h2>Chạy probe trên lab</h2>
+        <div class="grid-2">
+          <div class="terminal">
+            <div class="bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span></div>
+            <div class="body"><span class="cmd">$ make stack-ui</span>
+<span class="ok">✓</span> nginx · kafka · spring · soc-dashboard
+
+<span class="cmd">$ ./datasets/probes/run_medium_high.sh</span>
+med-… severity=<span class="warn">MEDIUM</span> http=200
+high-… severity=<span class="warn">HIGH</span> http=200
+
+<span class="cmd">$ ./datasets/probes/run.sh</span>
+sqli-union-bool severity=<span style="color:#e85d5d">CRITICAL</span> http=200
+<span class="ok">=== done failures=0 ===</span></div>
+          </div>
+          <div class="card">
+            <h3>Một số lệnh thường dùng</h3>
+            <ul class="tight">
+              <li><code>make simulate-monitoring</code> — mô phỏng lưu lượng</li>
+              <li><code>python3 run.py --severity MEDIUM</code></li>
+              <li><code>make eval-juice</code> / <code>eval-benchmark</code></li>
+              <li><code>make down</code> · <code>make destroy</code></li>
+            </ul>
+            <p class="note" style="margin-top:.7rem;">Ràng buộc đạo đức: chỉ Juice Shop tự host qua Nginx lab.</p>
+          </div>
+        </div>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 17 Benchmark — Spring Boot detector focus -->
+      <section class="slide content dense" data-min="12:10" data-sec="90">
+        <p class="eyebrow">8. Benchmark trên Spring Boot detector</p>
+        <div class="caption-row">
+          <h2>OWASP Benchmark v1.2 → runtime Spring</h2>
+          <span class="pill warn">780 Alert · CRITICAL · điểm ≈ 100 · 1 Incident</span>
+        </div>
+        <p class="note" style="margin:0 0 .35rem;">
+          Nguồn: <strong>OWASP BenchmarkJava v1.2</strong> (<code>expectedresults-1.2.csv</code>) · adaptation ngoài chuẩn:
+          chỉ <code>sqli</code> / <code>xss</code> / <code>pathtraver</code> nhìn thấy trên access log (780/2740) ·
+          replay GET payload cố định qua Nginx · <strong>không</strong> deploy WAR · điểm chính thức <code>TPR − FPR</code>
+        </p>
+        <div class="grid-3">
+          <div class="card">
+            <h3>Spring Boot làm gì trên mỗi case</h3>
+            <ul class="tight">
+              <li>Log Nginx → Kafka → consumer normalize</li>
+              <li>14 regex <code>AI_MINED</code> khớp path/query/UA</li>
+              <li><code>RiskScorer</code>: Σ<em>w</em> + <em>B</em><sub>freq</sub> + <em>B</em><sub>status</sub> → thường <strong>97–100</strong></li>
+              <li><code>AlertService</code>: score ≥ 60 → Alert CRITICAL</li>
+              <li>IMMEDIATE → gom 780 Alert vào <strong>1</strong> Incident (<code>appId</code>, IP)</li>
+            </ul>
+            <table style="margin-top:.4rem;font-size:.78rem;">
+              <tr><th>REST sau lần chạy</th><th>Giá trị</th></tr>
+              <tr><td>WebEvent</td><td><strong>801</strong> (= 780 + 21 health)</td></tr>
+              <tr><td>Alert CRITICAL</td><td><strong>780</strong> / 780 case</td></tr>
+              <tr><td>Incident OPEN</td><td><strong>1</strong> · explain SKIPPED</td></tr>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Kết quả chấm Alert của backend</h3>
+            <p class="note" style="margin:0 0 .35rem;">780 case log-visible · nhãn OWASP true 467 / false 313</p>
+            <div class="matrix" style="max-width:100%;font-size:.74rem;">
+              <div></div><div class="note">Có Alert</div><div class="note">Không</div>
+              <div class="note">true</div><div class="cell tp"><strong>TP 467</strong></div><div class="cell fn"><strong>FN 0</strong></div>
+              <div class="note">false</div><div class="cell fp"><strong>FP 313</strong></div><div class="cell tn"><strong>TN 0</strong></div>
+            </div>
+            <p style="margin:.45rem 0 0;font-family:var(--mono);font-size:.82rem;line-height:1.45;">
+              TPR = 1 · FPR = 1<br/>
+              Score<sub>Benchmark</sub> = TPR − FPR = <span style="color:var(--accent2);font-size:1.2rem;"><strong>0</strong></span>
+            </p>
+            <table style="margin-top:.4rem;font-size:.72rem;">
+              <tr><th>Rule-family</th><th>TP</th><th>FP</th><th>Sc</th></tr>
+              <tr><td>SQLI</td><td>194</td><td>119</td><td>0</td></tr>
+              <tr><td>XSS</td><td>190</td><td>131</td><td>0</td></tr>
+              <tr><td>PATH</td><td>83</td><td>63</td><td>0</td></tr>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Ý nghĩa với dự án (không phải “fail”)</h3>
+            <p class="note" style="margin:0 0 .35rem;"><strong>Nhãn Benchmark:</strong> mã servlet có lỗ hổng?<br/><strong>Spring trả lời:</strong> request có mẫu tấn công? (≥ 60)</p>
+            <ul class="tight">
+              <li><strong>Đúng việc của detector:</strong> 780/780 attempt → Alert (FN = 0)</li>
+              <li>Case <em>false</em> vẫn nhận payload tấn công cố định → cũng Alert → FP theo nhãn Benchmark</li>
+              <li>Điểm 0 = không tách “mã vuln / mã safe” — backend <em>không</em> đọc mã nguồn</li>
+              <li>Chỉ 780/2740 case vào mẫu (query/param trên log); không deploy WAR</li>
+            </ul>
+            <p class="note" style="margin:.45rem 0 0;"><strong>Không khẳng định:</strong> đạt/trượt Benchmark chính thức; “không bắt được gì”; gộp với Juice recall 0,774; tăng ngưỡng 60 để “cải thiện” điểm.</p>
+          </div>
+        </div>
+        <p class="lead" style="margin-top:.35rem;font-size:.95rem;">Benchmark đo hành vi runtime của Spring (rule → score → Alert → Incident), không thay cổng offline của bộ rule.</p>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 26 Eval three tiers -->
+      <section class="slide content" data-min="18:45" data-sec="40">
+        <p class="eyebrow">9. Tổng hợp đánh giá</p>
+        <h2>Ba tầng đo lường — ba câu hỏi độc lập</h2>
+        <div class="grid-3">
+          <div class="card metric-card"><h3>A · Offline</h3><div class="metric">14</div><small>Regex có khớp payload?<br/>FPR lành ≈ 0 · coverage ~50–68%</small></div>
+          <div class="card metric-card"><h3>B · Juice Shop</h3><div class="metric">0,774</div><small>Yêu cầu có nhãn có mở Alert?<br/>Precision 1,0 · FP = 0 · TP 24 · FN 7</small></div>
+          <div class="card metric-card"><h3>Benchmark</h3><div class="metric">0</div><small>Phân biệt mã dễ tổn thương / an toàn?<br/>TPR = FPR = 1 · 780/780 attempt</small></div>
+        </div>
+        <div class="matrix" style="margin-top:.6rem;max-width:420px;">
+          <div></div><div class="note">Có Alert</div><div class="note">Không Alert</div>
+          <div class="note">Juice tấn công</div><div class="cell tp"><strong>TP 24</strong></div><div class="cell fn"><strong>FN 7</strong></div>
+          <div class="note">Juice sạch</div><div class="cell fp"><strong>FP 0</strong></div><div class="cell tn"><strong>TN 56</strong></div>
+        </div>
+        <p class="note">Độ trễ yêu cầu → Alert trong lab: 11,5–15,1 giây (mục tiêu &lt; 5 giây — chưa đạt).</p>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 27 NIST -->
+      <section class="slide content" data-min="19:25" data-sec="25">
+        <p class="eyebrow">10. Ánh xạ quản trị</p>
+        <h2>NIST CSF và ISO/IEC 27001 (phạm vi lab)</h2>
+        <div class="grid-2">
+          <div class="card"><h3>NIST CSF</h3><ul class="tight"><li><strong>Detect</strong> — nhật ký, rule, điểm, Alert</li><li><strong>Respond</strong> — Incident, phân loại, SSE</li><li>Govern/Protect — RBAC, lưu trữ trong lab</li></ul></div>
+          <div class="card"><h3>ISO/IEC 27001</h3><ul class="tight"><li>A.8.15 Logging · A.8.16 Monitoring</li><li>A.5.24–28 quản lý sự cố / bằng chứng</li></ul></div>
+        </div>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 28 Live checklist -->
+      <section class="slide content" data-min="19:50" data-sec="25">
+        <p class="eyebrow">11. Trình diễn (nếu còn thời gian)</p>
+        <h2>Các bước kiểm tra trên máy</h2>
+        <div class="grid-2">
+          <div class="card">
+            <ol class="tight">
+              <li><code>make stack-ui</code> → giao diện <code>:3001</code></li>
+              <li><code>browse_clean.sh</code> → ít cảnh báo</li>
+              <li>CRITICAL: payload UNION hoặc <code>run.sh</code></li>
+              <li>Giao diện: SSE Alert → Incident → hits</li>
+              <li><code>simulate_monitoring</code> (tuỳ chọn)</li>
+            </ol>
+          </div>
+          <div class="ui-mock" aria-hidden="true">
+            <div class="ui-side">
+              <div class="nav">Tổng quan</div>
+              <div class="nav on">Cảnh báo</div>
+              <div class="nav">Sự cố</div>
+            </div>
+            <div class="ui-main">
+              <div class="alert-row"><span class="badge crit">CRITICAL</span> UNION SELECT · 95</div>
+              <div class="alert-row"><span class="badge high">HIGH</span> OR 1=1'-- · 75</div>
+              <div class="alert-row"><span class="badge med">MEDIUM</span> sleep(5) · 60</div>
+              <p class="note" style="margin-top:.6rem;">Một Incident OPEN có thể gắn nhiều Alert</p>
+            </div>
+          </div>
+        </div>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 29 Limitations + future work -->
+      <section class="slide content dense" data-min="20:15" data-sec="50">
+        <p class="eyebrow">12. Kết thúc</p>
+        <h2>Hạn chế và hướng phát triển</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Hạn chế</h3>
+            <ul class="tight">
+              <li>Access log không có POST body, header, cookie → blind spot theo thiết kế</li>
+              <li>Chữ ký regex: không bao phủ zero-day; coverage SQLi held-out còn thấp</li>
+              <li>Độ trễ request→Alert (~11,5–15,1 s) chưa đạt mục tiêu &lt; 5 s</li>
+              <li>OWASP Benchmark adaptation (điểm 0): lệch ontology, không phải điểm chính thức</li>
+              <li>Không chặn HTTP; LLM chưa involve vào giai đoạn phát hiện tấn công</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Hướng phát triển</h3>
+            <ul class="tight">
+              <li>Instrument timestamp (Nginx → Filebeat → Kafka → consumer → SSE) để tối ưu p95</li>
+              <li>Telemetry body/header theo allow-list, masking, giới hạn kích thước</li>
+              <li>Regression corpus + quy trình approval / rollback rule</li>
+              <li>Feedback false-positive có human approval; audit log bất biến</li>
+              <li>WAF inline DetectionOnly trước khi cân nhắc block; đánh giá đa app / dưới tải</li>
+            </ul>
+          </div>
+        </div>
+        <p class="lead" style="margin-top:.45rem;font-size:.95rem;">Mọi tự động hóa block hoặc điều chỉnh rule cần giữ con người trong vòng quyết định.</p>
+              <span class="page-num"></span>
+      </section>
+
+      <!-- 30 Thanks -->
+      <section class="slide thanks" data-min="20:50" data-sec="20">
+        <div class="thanks-extra">
+          Juice: recall 0,774 · Benchmark adaptation: điểm 0 (TPR = FPR = 1)<br/>
+          <code>docs/report/final-report.pdf</code>
+        </div>
+        <span class="page-num"></span>
+      </section>
+
+    </div>
+
+    <div class="footer-bar">
+      <div><span id="counter">1 / 20</span> · <span class="time" id="cue">0:00 · ~40s</span></div>
+      <div class="progress"><span id="bar"></span></div>
+      <div class="hint-keys"><kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd> · <kbd>F</kbd></div>
+    </div>
+  </div>
+
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    let i = 0;
+    function show(n) {
+      i = Math.max(0, Math.min(slides.length - 1, n));
+      slides.forEach((s, idx) => {
+        s.classList.toggle("active", idx === i);
+        const pn = s.querySelector(".page-num");
+        if (pn) pn.textContent = String(idx + 1);
+      });
+      document.getElementById("counter").textContent = `${i + 1} / ${slides.length}`;
+      const s = slides[i];
+      document.getElementById("cue").textContent = `${s.dataset.min || ""} · ~${s.dataset.sec || ""}s`;
+      document.getElementById("bar").style.width = `${((i + 1) / slides.length) * 100}%`;
+      history.replaceState(null, "", `#${i + 1}`);
+      if (window.MathJax?.typesetPromise && s.querySelector(".math-display")) {
+        MathJax.typesetPromise([s]).catch(() => {});
+      }
+    }
+    document.addEventListener("keydown", (e) => {
+      if (["ArrowRight", "PageDown", " ", "Enter"].includes(e.key)) { e.preventDefault(); show(i + 1); }
+      else if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); show(i - 1); }
+      else if (e.key === "Home") show(0);
+      else if (e.key === "End") show(slides.length - 1);
+      else if (e.key === "f" || e.key === "F") {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+        else document.exitFullscreen?.();
+      }
+    });
+    let touchX = null;
+    document.addEventListener("touchstart", (e) => { touchX = e.changedTouches[0].screenX; });
+    document.addEventListener("touchend", (e) => {
+      if (touchX == null) return;
+      const dx = e.changedTouches[0].screenX - touchX;
+      if (dx < -40) show(i + 1);
+      if (dx > 40) show(i - 1);
+      touchX = null;
+    });
+    const hash = parseInt(location.hash.replace("#", ""), 10);
+    show(Number.isFinite(hash) && hash >= 1 ? hash - 1 : 0);
+  </script>
+</body>
+</html>

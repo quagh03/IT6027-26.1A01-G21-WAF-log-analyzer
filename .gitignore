@@ -54,3 +54,10 @@ detection-rule-generator/data/raw/ingested.csv
 detection-rule-generator/data/normalized/*.csv
 detection-rule-generator/data/evaluation/*.csv
 detection-rule-generator/data/clustered/*.csv
+
+# OWASP Benchmark upstream (download; do not commit)
+datasets/eval/owasp-benchmark/_upstream/
+datasets/eval/owasp-benchmark/expectedresults-1.2.csv
+datasets/eval/owasp-benchmark/scored-cases.csv
+datasets/eval/owasp-benchmark/bench.tgz
+datasets/eval/**/__pycache__/

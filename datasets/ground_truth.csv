@@ -1,28 +1,39 @@
 id,source,category,method,host,path,query,expected,note
-sqli-time-sleep,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=sleep(5),alert,"TIME weight 60, MEDIUM"
-sqli-time-pgsleep,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=pg_sleep(1),alert,"TIME weight 60, MEDIUM"
-sqli-time-benchmark,probe,SQLI,GET,juice.lab.local,/rest/products/search,"q=benchmark(1,1)",alert,"TIME weight 60, MEDIUM"
-sqli-time-waitfor,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=waitfor delay '0:0:1',alert,"TIME weight 60, MEDIUM"
-sqli-union-bool,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1 OR 1=1 UNION SELECT 1,alert,"BOOLEAN 40 + UNION 55, CRITICAL"
-sqli-string-union,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1 OR 'a'='a' UNION SELECT null,alert,"BOOLEAN-002 40 + UNION 55, CRITICAL"
-sqli-stacked-sleep,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1;select sleep(1),alert,"STACKED 50 + TIME 60, CRITICAL"
-sqli-comment-union,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1'-- UNION SELECT 1,alert,"COMMENT 35 + UNION 55, HIGH"
-xss-script-js,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<script>javascript:alert(1)</script>,alert,SCRIPT 55 + JSURI 50
-xss-encoded,probe,XSS,GET,juice.lab.local,/rest/products/search,q=%3cscript%3ealert(1)%3c/script%3e,alert,ENCODED 40 + SCRIPT 55
-xss-event-js,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<img src=x onerror=javascript:alert(1)>,alert,EVENT 45 + JSURI 50
-xss-svg,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<svg onload=alert(1)>,alert,SCRIPT 55 + EVENT 45
-xss-iframe,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<iframe src=javascript:alert(1)>,alert,SCRIPT 55 + JSURI 50
-xss-double,probe,XSS,GET,juice.lab.local,/rest/products/search,q=%253cscript%3ealert(1),alert,ENCODED 40 + SCRIPT 55
-xss-body,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<body onload=javascript:alert(1)>,alert,EVENT 45 + JSURI 50
-xss-vbscript,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<script src=vbscript:msgbox(1)>,alert,SCRIPT 55 + JSURI 50
-pt-dot-enc,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=../../etc/passwd%2e%2e%2f,alert,DOTDOT 45 + ENCODED 50 on raw
-pt-encoded-dot,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=..%2f..%2fetc/passwd%2e%2e%2f,alert,DOTDOT + ENCODED
-pt-backslash,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=..%5c..%5cwin.ini%2e%2e%5c,alert,BACKSLASH + ENCODED
-pt-double,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=../%252e%252e%252fetc/passwd,alert,DOTDOT + DOUBLE
-pt-mix,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=../../etc/passwd%2e%2e%5c,alert,DOTDOT + ENCODED backslash
-pt-query,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,q=../../../../etc/passwd%2e%2e/,alert,DOTDOT + ENCODED
-pt-win,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=..%5c..%5cwindows%5cwin.ini%2e%2e%5c,alert,BACKSLASH + ENCODED
-pt-double-enc,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=%252e%252e%252f..%2fetc/passwd,alert,DOUBLE + DOTDOT
+sqli-time-sleep,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=sleep(5),alert,TIME weight 60 only → MEDIUM (run.py keeps parentheses)
+sqli-time-pgsleep,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=pg_sleep(1),alert,TIME weight 60 → MEDIUM
+sqli-time-benchmark,probe,SQLI,GET,juice.lab.local,/rest/products/search,"q=benchmark(1,1)",alert,TIME weight 60 → MEDIUM
+sqli-time-waitfor,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=waitfor delay '0:0:1',alert,TIME weight 60 → MEDIUM (no ';' so STACKED does not fire)
+med-sqli-union-404,probe,SQLI,GET,juice.lab.local,/rest/products/search-missing-for-severity-demo,q=1 UNION SELECT null,alert,UNION 55 + status_bonus 5 on HTTP 404 → 60 MEDIUM
+high-sqli-bool-comment,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1 OR 1=1'--,alert,BOOLEAN-001 40 + COMMENT 35 = 75 HIGH (no UNION)
+high-sqli-string-comment,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=x' OR 'a'='a'--,alert,BOOLEAN-002 40 + COMMENT 35 = 75 HIGH
+high-xss-event-comment,probe,MIXED,GET,juice.lab.local,/rest/products/search,q=<img src=x onerror=1>'--,alert,EVENT 45 + COMMENT 35 = 80 HIGH (no javascript:)
+sqli-union-bool,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1 OR 1=1 UNION SELECT 1,alert,BOOLEAN 40 + UNION 55 = 95 CRITICAL
+sqli-string-union,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1 OR 'a'='a' UNION SELECT null,alert,BOOLEAN-002 40 + UNION 55 = 95 CRITICAL
+sqli-stacked-sleep,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1;select sleep(1),alert,STACKED 50 + TIME 60 CRITICAL
+sqli-comment-union,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1'-- UNION SELECT 1,alert,COMMENT 35 + UNION 55 = 90 CRITICAL
+xss-script-js,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<script>javascript:alert(1)</script>,alert,SCRIPT 55 + JSURI 50 CRITICAL
+xss-encoded,probe,XSS,GET,juice.lab.local,/rest/products/search,q=%3cscript%3ealert(1)%3c/script%3e,alert,ENCODED 40 + SCRIPT 55 CRITICAL
+xss-event-js,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<img src=x onerror=javascript:alert(1)>,alert,EVENT 45 + JSURI 50 CRITICAL
+xss-svg,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<svg onload=alert(1)>,alert,SCRIPT 55 + EVENT 45 CRITICAL
+xss-iframe,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<iframe src=javascript:alert(1)>,alert,SCRIPT 55 + JSURI 50 CRITICAL
+xss-double,probe,XSS,GET,juice.lab.local,/rest/products/search,q=%253cscript%3ealert(1),alert,ENCODED 40 + SCRIPT 55 CRITICAL
+xss-body,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<body onload=javascript:alert(1)>,alert,EVENT 45 + JSURI 50 CRITICAL
+xss-vbscript,probe,XSS,GET,juice.lab.local,/rest/products/search,q=<script src=vbscript:msgbox(1)>,alert,SCRIPT 55 + JSURI 50 CRITICAL
+pt-dot-enc,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=../../etc/passwd%2e%2e%2f,alert,DOTDOT 45 + ENCODED 50 CRITICAL
+pt-encoded-dot,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=..%2f..%2fetc/passwd%2e%2e%2f,alert,DOTDOT + ENCODED CRITICAL
+pt-backslash,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=..%5c..%5cwin.ini%2e%2e%5c,alert,BACKSLASH + ENCODED CRITICAL
+pt-double,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=../%252e%252e%252fetc/passwd,alert,DOTDOT + DOUBLE CRITICAL
+pt-mix,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=../../etc/passwd%2e%2e%5c,alert,DOTDOT + ENCODED CRITICAL
+pt-query,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,q=../../../../etc/passwd%2e%2e/,alert,DOTDOT + ENCODED CRITICAL
+pt-win,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=..%5c..%5cwindows%5cwin.ini%2e%2e%5c,alert,BACKSLASH + ENCODED CRITICAL
+pt-double-enc,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=%252e%252e%252f..%2fetc/passwd,alert,DOUBLE + DOTDOT CRITICAL
+hard-sqli-mixed-case,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1+oR+1%3d1+UnIoN+SeLeCt+null,alert,boolean + union CRITICAL
+hard-sqli-obrien,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=O%27Brien%27--+UNION+SELECT+1,alert,comment + union CRITICAL
+hard-sqli-waitfor,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1;waitfor%20delay%20%270:0:1%27,alert,STACKED + TIME CRITICAL
+hard-xss-double-svg,probe,XSS,GET,juice.lab.local,/rest/products/search,q=%253csvg%20onload%3dalert(1)%253e%20javascript:void(0),alert,encoded svg + javascript URI CRITICAL
+hard-pt-double,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=%252e%252e%252f%252e%252e%252fetc/passwd,alert,double-encoded traversal CRITICAL
+hard-pt-win,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=%2e%2e%5c..%5cwindows%5cwin.ini,alert,backslash traversal CRITICAL
+hard-multi,probe,MIXED,GET,juice.lab.local,/rest/products/search,q=1+OR+1%3d1+UNION+SELECT+1&x=%3Cscript%3Ejavascript:alert(1)&file=../../etc/passwd,alert,SQLi + XSS + traversal CRITICAL
 clean-apple,probe,CLEAN,GET,juice.lab.local,/rest/products/search,q=apple,clean,benign search
 clean-juice,probe,CLEAN,GET,juice.lab.local,/rest/products/search,q=juice,clean,benign search
 clean-numeric,probe,CLEAN,GET,juice.lab.local,/rest/products/search,q=1,clean,benign numeric query
@@ -79,10 +90,3 @@ browse-47,browse,CLEAN,GET,juice.lab.local,/video,,clean,benign browse
 browse-48,browse,CLEAN,GET,juice.lab.local,/promotion,,clean,benign browse
 browse-49,browse,CLEAN,GET,juice.lab.local,/rest/wallet/balance,,clean,benign browse
 browse-50,browse,CLEAN,GET,juice.lab.local,/rest/saveLoginIp,,clean,benign browse
-hard-sqli-mixed-case,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1+oR+1%3d1+UnIoN+SeLeCt+null,alert,mixed-case boolean + union separated by plus
-hard-sqli-obrien,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=O%27Brien%27--+UNION+SELECT+1,alert,name-like quote-comment plus union
-hard-sqli-waitfor,probe,SQLI,GET,juice.lab.local,/rest/products/search,q=1;waitfor%20delay%20%270:0:1%27,alert,stacked waitfor delay
-hard-xss-double-svg,probe,XSS,GET,juice.lab.local,/rest/products/search,q=%253csvg%20onload%3dalert(1)%253e%20javascript:void(0),alert,double-encoded svg onload plus javascript URI
-hard-pt-double,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=%252e%252e%252f%252e%252e%252fetc/passwd,alert,double-encoded dot-dot
-hard-pt-win,probe,PATH_TRAVERSAL,GET,juice.lab.local,/ftp,file=%2e%2e%5c..%5cwindows%5cwin.ini,alert,encoded backslash traversal
-hard-multi,probe,MIXED,GET,juice.lab.local,/rest/products/search,q=1+OR+1%3d1+UNION+SELECT+1&x=%3Cscript%3Ejavascript:alert(1)&file=../../etc/passwd,alert,SQLi + XSS + traversal

@@ -194,7 +194,35 @@ Probes: **37** scenarios in `scenarios.yaml` (**31** `expected=alert`, **6** cle
 ./datasets/probes/browse_clean.sh
 ```
 
-Labels for a later measurement pass (Week 5 TP/FP/FN) are in `datasets/ground_truth.csv` (37 probe rows + 50 browse rows). Lab check after `run.sh`: most `expected=alert` scenarios produce alerts (e.g. ~28/31 in a 5‑minute window); note any missing `id` — do not build the TP/FP table in Week 4.
+## Week 5 — đánh giá, báo cáo, slide
+
+Labels: `datasets/ground_truth.csv` (37 probe + 50 browse). Eval scripts và số đo:
+
+| Artifact | Path |
+|----------|------|
+| Juice TP/FP/FN | `datasets/eval/juice-lab.md` |
+| OWASP Benchmark (external) | `datasets/eval/owasp-benchmark/` |
+| Latency | `datasets/eval/latency.md` |
+| Báo cáo nộp | `docs/report/final-report.md` (+ PDF) |
+| Slide 8–10 phút | `docs/slides/demo-week05.md` |
+
+```bash
+# Lab sạch (xóa volume Postgres / Redis / nginx-logs) — bắt buộc trước Benchmark
+make reset
+make stack-ui                 # http://127.0.0.1:3001  admin/admin  (LLM off → SKIPPED)
+
+./datasets/probes/browse_clean.sh
+./datasets/probes/run.sh
+python3 datasets/eval/score_juice.py
+
+# Benchmark: tải expectedresults + sources (xem datasets/eval/owasp-benchmark/README.md)
+make reset && make stack-ui
+python3 datasets/eval/owasp-benchmark/run_eval.py
+
+python3 datasets/eval/measure_latency.py
+```
+
+Tắt LLM (mặc định): incident mới có `explanation_status=SKIPPED`, alert/SSE vẫn chạy. Bật: `make stack-llm`.
 
 ### LLM explain (two paths)
 

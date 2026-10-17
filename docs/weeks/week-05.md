@@ -6,7 +6,7 @@
 | Theme | FP/FN + NIST CSF + slide demo + polish |
 | Phụ thuộc | Week 04 DoD (demo E2E chạy được) |
 | Map outcome | **O8**, **O10** (+ đóng O1–O9 nếu còn hở) |
-| Trạng thái | `Not started` |
+| Trạng thái | `Done` |
 
 ---
 
@@ -78,11 +78,11 @@ Nộp đủ deliverable §13: monorepo chạy được, bảng FP/FN trên bộ 
 
 Tuần **Done** khi **tất cả** điều sau đúng:
 
-- [ ] Mọi AC trong §6 pass
-- [ ] Đủ 6 deliverable nộp §13
-- [ ] Dry-run demo một lần không gãy bước (LLM được phép FAILED nếu đã ghi trong slide)
-- [ ] Không thêm scope phase 2
-- [ ] `docs/weeks/week-05.md` đánh `Done` sau khi gói nộp khóa
+- [x] Mọi AC trong §6 pass
+- [x] Đủ 6 deliverable nộp §13
+- [x] Dry-run demo một lần không gãy bước (LLM được phép FAILED nếu đã ghi trong slide)
+- [x] Không thêm scope phase 2
+- [x] `docs/weeks/week-05.md` đánh `Done` sau khi gói nộp khóa
 
 ## 8. Deliverables
 

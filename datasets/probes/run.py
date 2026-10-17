@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 import time
 import urllib.error
@@ -12,6 +13,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SCENARIOS = ROOT / "scenarios.yaml"
+
+# Keep () so TIME rules like sleep(5) still match raw access-log query text.
+# Keep already-encoded %xx sequences intact.
+QUERY_SAFE = "=&%+/:?()"
 
 
 def parse_scenarios(text: str) -> tuple[str, str, list[dict[str, str]]]:
@@ -51,7 +56,7 @@ def unquote(value: str) -> str:
 
 
 def send(base_url: str, host: str, method: str, path: str, query: str) -> int:
-    encoded = urllib.parse.quote(query, safe="=&%+/:?") if query else ""
+    encoded = urllib.parse.quote(query, safe=QUERY_SAFE) if query else ""
     url = base_url.rstrip("/") + path
     if encoded:
         url = f"{url}?{encoded}"
@@ -65,12 +70,29 @@ def send(base_url: str, host: str, method: str, path: str, query: str) -> int:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Send local Juice Shop probe scenarios")
+    parser.add_argument(
+        "--severity",
+        default="",
+        help="Comma list to filter: MEDIUM,HIGH,CRITICAL,CLEAN (empty = all)",
+    )
+    args = parser.parse_args()
+    wanted = {part.strip().upper() for part in args.severity.split(",") if part.strip()}
+
     base_url, default_host, scenarios = parse_scenarios(SCENARIOS.read_text(encoding="utf-8"))
+    if wanted:
+        scenarios = [
+            s for s in scenarios
+            if (s.get("expected_severity") or ("CLEAN" if s.get("expected") == "clean" else "")).upper()
+            in wanted
+        ]
     if not scenarios:
         print("no scenarios", file=sys.stderr)
         return 1
     print(f"=== probes via {base_url} ({len(scenarios)} scenarios) ===")
     print("Ethics: local Juice Shop behind Nginx only. Do not retarget this script.")
+    if wanted:
+        print(f"filter severity={','.join(sorted(wanted))}")
     failures = 0
     for scenario in scenarios:
         host = scenario.get("host") or default_host
@@ -78,12 +100,16 @@ def main() -> int:
         path = scenario.get("path") or "/"
         query = scenario.get("query") or ""
         expected = scenario.get("expected") or "alert"
+        severity = scenario.get("expected_severity") or ("CLEAN" if expected == "clean" else "?")
         try:
             status = send(base_url, host, method, path, query)
-            print(f"{scenario.get('id')} expected={expected} http={status} host={host}")
+            print(
+                f"{scenario.get('id')} expected={expected} "
+                f"severity={severity} http={status} host={host}"
+            )
         except Exception as error:  # noqa: BLE001 — keep the rest of the run going
             failures += 1
-            print(f"{scenario.get('id')} expected={expected} ERROR {error}")
+            print(f"{scenario.get('id')} expected={expected} severity={severity} ERROR {error}")
         time.sleep(0.25)
     print(f"=== done failures={failures} ===")
     return 1 if failures else 0

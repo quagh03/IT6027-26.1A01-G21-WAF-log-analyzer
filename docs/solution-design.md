@@ -5,8 +5,8 @@
 
 | Trường | Giá trị |
 |--------|---------|
-| Phiên bản | `1.6` |
-| Ngày | 2026-09-18 |
+| Phiên bản | `1.7` |
+| Ngày | 2026-10-11 |
 | Trạng thái | **Approved for implementation** (đã chốt quyết định) |
 | Tác giả | (điền tên sinh viên) |
 
@@ -1004,3 +1004,4 @@ Còn lại chỉ là metadata hành chính (tên SV, deadline môn, có làm nh�
 | 1.4 | 2026-09-12 | **Chốt Attack Scenario Runner** ở upstream: `datasets/probes` (scenarios có nhãn + script tự chạy qua Nginx); không dùng ZAP/Nuclei/sqlmap làm runner chính MVP |
 | 1.5 | 2026-09-15 | **Gắn `detection-rule-generator`:** AI-assisted rule mining offline → compile `DetectionRule` → Flyway seed; tách LLM offline (mine) vs online (explain); eval 2 tầng; schema provenance; monorepo + `docs/rule-creation.md`; sửa mâu thuẫn Java 17→25 trong open questions |
 | 1.6 | 2026-09-18 | **Java class design §7.3:** package/enum/entity/DTO/service; `DetectionRule` + provenance map từ JSON production; đánh số lại Scoring §7.4, Incident §7.5 |
+| 1.7 | 2026-10-11 | **Week 5 đóng gói:** eval Juice + OWASP Benchmark external (`datasets/eval/`); báo cáo NIST/ISO + slide; latency đo được trượt &lt;5s (ghi hạn chế Filebeat/Kafka); không retune rule từ Benchmark |
