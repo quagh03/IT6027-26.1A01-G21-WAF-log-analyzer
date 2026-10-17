@@ -142,9 +142,12 @@ public class SocReadService {
         if (!alert.getCreatedAt().isBefore(dayAgo)) {
           alertsLast24Hours++;
         }
-        String bucket = DateTimeFormatter.ISO_INSTANT.format(
-            alert.getCreatedAt().truncatedTo(ChronoUnit.HOURS)
-        );
+        // 15-minute buckets so composed charts (bar + rolling avg + cumulative) have
+        // enough points after a short lab/eval burst lands in a single clock hour.
+        Instant truncated = alert.getCreatedAt().truncatedTo(ChronoUnit.MINUTES);
+        long epochMinute = truncated.getEpochSecond() / 60;
+        long bucketMinute = (epochMinute / 15) * 15;
+        String bucket = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(bucketMinute * 60));
         hours.merge(bucket, 1L, Long::sum);
       }
       if (alert.getClientIp() != null) {

@@ -308,6 +308,16 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   gap: 12px;
   margin-bottom: 12px;
 }
+.split-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.chart-caption {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-bottom: 6px;
+}
 
 .panel {
   background: var(--bg-elev);
@@ -770,6 +780,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   }
   .brand { width: 100%; margin-bottom: 8px; }
   .nav .spacer { display: none; }
-  .kpis, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .kpis, .grid-2, .grid-3, .split-charts { grid-template-columns: 1fr; }
   .main { padding: 20px 16px 36px; }
 }

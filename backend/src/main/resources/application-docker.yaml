@@ -12,5 +12,5 @@ spring:
 
 app:
   llm:
-    # Compose service `ollama` (profile llm). Override with OLLAMA_BASE_URL for host Ollama.
-    base-url: ${OLLAMA_BASE_URL:http://ollama:11434}
+    # Host Ollama via host.docker.internal (make stack-llm). Override for Compose profile llm.
+    base-url: ${OLLAMA_BASE_URL:http://host.docker.internal:11434}

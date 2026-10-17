@@ -25,7 +25,7 @@ Full Compose (backend image + SOC UI). The image build vendors host Gradle via `
 
 ```bash
 make stack-ui         # http://127.0.0.1:3001  (LLM off)
-make stack-llm        # same + Compose profile llm (Ollama)
+make stack-llm        # same + LLM via host Ollama (ollama serve on :11434)
 ```
 
 `make ui` starts Vite at http://127.0.0.1:5173.
@@ -229,8 +229,8 @@ Tắt LLM (mặc định): incident mới có `explanation_status=SKIPPED`, aler
 | Mode | Command | New incident `explanation_status` |
 |------|---------|-----------------------------------|
 | Off (default) | `make stack-ui` | `SKIPPED` — alerts/SSE still work |
-| On (host Ollama) | `APP_LLM_ENABLED=true OLLAMA_BASE_URL=http://host.docker.internal:11434 OLLAMA_MODEL=qwen3.5:9b docker compose up -d spring-security-backend` | `PENDING` → `READY` or `FAILED` |
-| On (Compose Ollama) | Stop host Ollama on `:11434`, then `make stack-llm` and `docker compose exec ollama ollama pull llama3.2` | same |
+| On (host Ollama) | `ollama serve` + `make stack-llm` (default `OLLAMA_BASE_URL=http://host.docker.internal:11434`, model `qwen3.5:9b`) | `PENDING` → `READY` or `FAILED` |
+| On (Compose Ollama) | Stop host Ollama on `:11434`, then `APP_LLM_ENABLED=true OLLAMA_BASE_URL=http://ollama:11434 docker compose --profile ui --profile llm up -d --build` and `docker compose exec ollama ollama pull llama3.2` | same |
 
 SSE alerts are never blocked by the model. Attaching a later alert to an existing incident does **not** re-explain. If explain `FAILED`, `POST /api/incidents/{id}/explain` returns **202** and runs async. The SOC incident screen shows *AI hỗ trợ, có thể không chính xác*.
 

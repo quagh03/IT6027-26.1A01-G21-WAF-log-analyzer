@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import {
   Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Legend,
+  Line,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -317,13 +318,24 @@ function Dashboard() {
     };
   }, [appId]);
 
-  const timeline = useMemo(
-    () => (stats?.timeline || []).map((point) => ({
-      ...point,
-      label: formatBucket(point.bucket),
-    })),
-    [stats],
-  );
+  const timeline = useMemo(() => {
+    let cumulative = 0;
+    const points = (stats?.timeline || []).map((point) => {
+      const count = Number(point.count || 0);
+      cumulative += count;
+      return {
+        ...point,
+        count,
+        cumulative,
+        label: formatBucket(point.bucket),
+      };
+    });
+    return points.map((point, index) => {
+      const window = points.slice(Math.max(0, index - 2), index + 1);
+      const rollingAvg = window.reduce((sum, row) => sum + row.count, 0) / window.length;
+      return { ...point, rollingAvg: Math.round(rollingAvg * 10) / 10 };
+    });
+  }, [stats]);
 
   const severityTotal = useMemo(() => {
     const map = stats?.alertsBySeverity || {};
@@ -337,25 +349,34 @@ function Dashboard() {
     [stats],
   );
 
-  const promotePie = useMemo(
-    () => (stats?.promoteReasons || [])
-      .map((row) => ({ name: row.name, value: Number(row.count) || 0 }))
-      .filter((row) => row.value > 0),
-    [stats],
-  );
-
-  const explainPie = useMemo(() => {
-    const map = stats?.explanationByStatus || {};
-    return Object.keys(EXPLAIN_COLORS)
-      .map((name) => ({ name, value: Number(map[name] || 0) }))
-      .filter((row) => row.value > 0);
+  /** One chart: severity + promote + explain + triage — replaces 3 separate pies. */
+  const opsDistribution = useMemo(() => {
+    const rows = [
+      ...SEVERITIES.map((name) => ({
+        name,
+        bucket: 'Severity',
+        count: Number(stats?.alertsBySeverity?.[name] || 0),
+        fill: SEVERITY_COLORS[name] || '#8fa3bf',
+      })),
+      { name: 'IMMEDIATE', bucket: 'Promote', count: Number(countNamed(stats?.promoteReasons, 'IMMEDIATE') || 0), fill: PROMOTE_COLORS.IMMEDIATE },
+      { name: 'AGGREGATE', bucket: 'Promote', count: Number(countNamed(stats?.promoteReasons, 'AGGREGATE') || 0), fill: PROMOTE_COLORS.AGGREGATE },
+      { name: 'OPEN', bucket: 'Triage', count: Number(stats?.openIncidentCount || 0), fill: '#e8b84a' },
+      { name: 'ACK', bucket: 'Triage', count: Number(stats?.ackIncidentCount || 0), fill: '#3dcf9a' },
+      { name: 'CLOSED', bucket: 'Triage', count: Number(stats?.closedIncidentCount || 0), fill: '#8fa3bf' },
+      ...Object.keys(EXPLAIN_COLORS).map((name) => ({
+        name,
+        bucket: 'AI explain',
+        count: Number(stats?.explanationByStatus?.[name] || 0),
+        fill: EXPLAIN_COLORS[name],
+      })),
+    ].filter((row) => row.count > 0);
+    const max = Math.max(1, ...rows.map((row) => row.count));
+    return rows.map((row) => ({
+      ...row,
+      label: `${row.bucket}: ${row.name}`,
+      share: Math.round((row.count * 1000) / max) / 10,
+    }));
   }, [stats]);
-
-  const incidentStatusBars = useMemo(() => ([
-    { name: 'OPEN', count: Number(stats?.openIncidentCount || 0), fill: '#e8b84a' },
-    { name: 'ACK', count: Number(stats?.ackIncidentCount || 0), fill: '#3dcf9a' },
-    { name: 'CLOSED', count: Number(stats?.closedIncidentCount || 0), fill: '#8fa3bf' },
-  ]), [stats]);
 
   const pipelineBars = useMemo(() => {
     const events = Number(stats?.eventCount || 0);
@@ -364,33 +385,47 @@ function Dashboard() {
       + Number(stats?.ackIncidentCount || 0)
       + Number(stats?.closedIncidentCount || 0);
     const linked = Math.max(0, alertsCount - Number(stats?.unattachedAlertCount || 0));
+    const base = events > 0 ? events : 1;
     return [
       { stage: 'Events', count: events },
       { stage: 'Alerts', count: alertsCount },
       { stage: 'Gắn incident', count: linked },
       { stage: 'Incidents', count: incidentsTotal },
-    ];
+    ].map((row) => ({
+      ...row,
+      yieldPct: Math.round((row.count * 1000) / base) / 10,
+    }));
   }, [stats]);
 
-  const windowCompare = useMemo(() => ([
-    { name: '1 giờ', count: Number(stats?.alertsLastHour || 0) },
-    { name: '24 giờ', count: Number(stats?.alertsLast24Hours || 0) },
-    { name: 'Toàn bộ', count: Number(stats?.alertCount || 0) },
-  ]), [stats]);
+  const attackPareto = useMemo(() => {
+    const rows = [...(stats?.topAttackTypes || [])];
+    const total = rows.reduce((sum, row) => sum + Number(row.count || 0), 0) || 1;
+    let cumulative = 0;
+    return rows.map((row) => {
+      const count = Number(row.count || 0);
+      cumulative += count;
+      return {
+        ...row,
+        count,
+        share: Math.round((count * 1000) / total) / 10,
+        cumulativeShare: Math.round((cumulative * 1000) / total) / 10,
+      };
+    });
+  }, [stats]);
 
   const topIpsChart = useMemo(
-    () => [...(stats?.topIps || [])].slice(0, 6).reverse(),
+    () => withShare([...(stats?.topIps || [])].slice(0, 6)),
     [stats],
   );
   const topPathsChart = useMemo(
-    () => [...(stats?.topPaths || [])].slice(0, 6).map((row) => ({
+    () => withShare([...(stats?.topPaths || [])].slice(0, 6).map((row) => ({
       ...row,
       short: shortenPath(row.name),
-    })).reverse(),
+    }))),
     [stats],
   );
   const topRulesChart = useMemo(
-    () => [...(stats?.topRules || [])].slice(0, 6).reverse(),
+    () => withShare([...(stats?.topRules || [])].slice(0, 6)),
     [stats],
   );
 
@@ -453,75 +488,215 @@ function Dashboard() {
 
       <div className="section-title">
         <div>
-          <h2>Biểu đồ vận hành</h2>
-          <p>Timeline, phễu detect → incident, và so sánh cửa sổ thời gian</p>
+          <h2>Biểu đồ kết hợp</h2>
+          <p>
+            Đã gộp nhiều chiều vào cùng biểu đồ (cột + đường/area). Severity / promote / triage / AI
+            nằm chung một panel — không còn 3 pie riêng.
+          </p>
         </div>
+      </div>
+
+      <div className="panel" style={{ marginBottom: 12 }}>
+        <div className="panel-head">
+          <h2>Timeline cảnh báo (cột + TB trượt + lũy kế)</h2>
+          <span className="meta">Bucket 15 phút · Trái: volume · Phải: lũy kế</span>
+        </div>
+        {timeline.length === 0 ? <p className="empty">Chưa có dữ liệu timeline.</p> : (
+          <ResponsiveContainer width="100%" height={320}>
+            <ComposedChart data={timeline} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="cumFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3dcf9a" stopOpacity={0.28} />
+                  <stop offset="100%" stopColor="#3dcf9a" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={TICK} minTickGap={24} />
+              <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={36} />
+              <YAxis yAxisId="right" orientation="right" allowDecimals={false} tick={TICK} width={44} />
+              <ChartTooltip />
+              <Legend />
+              <Bar
+                yAxisId="left"
+                dataKey="count"
+                name="Theo giờ"
+                fill="#e8b84a"
+                radius={[4, 4, 0, 0]}
+                barSize={22}
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="rollingAvg"
+                name="TB 3 giờ"
+                stroke="#6cb6ff"
+                strokeWidth={2.5}
+                dot={false}
+              />
+              <Area
+                yAxisId="right"
+                type="monotone"
+                dataKey="cumulative"
+                name="Lũy kế"
+                stroke="#3dcf9a"
+                strokeWidth={2}
+                fill="url(#cumFill)"
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       <div className="grid-2">
         <div className="panel">
           <div className="panel-head">
-            <h2>Dòng thời gian cảnh báo</h2>
-            <span className="meta">Theo giờ · thấy đợt probe / tấn công</span>
+            <h2>Phễu pipeline</h2>
+            <span className="meta">Cột số lượng · đường % / events</span>
           </div>
-          {timeline.length === 0 ? <p className="empty">Chưa có dữ liệu timeline.</p> : (
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={timeline}>
-                <defs>
-                  <linearGradient id="alertFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#e8b84a" stopOpacity={0.45} />
-                    <stop offset="100%" stopColor="#e8b84a" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={pipelineBars} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
+              <XAxis dataKey="stage" tick={TICK} />
+              <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={40} />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                tick={TICK}
+                width={40}
+                unit="%"
+                domain={[0, 100]}
+              />
+              <ChartTooltip />
+              <Legend />
+              <Bar
+                yAxisId="left"
+                dataKey="count"
+                name="Số lượng"
+                fill="#6cb6ff"
+                radius={[8, 8, 0, 0]}
+                barSize={28}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="yieldPct"
+                name="% / events"
+                stroke="#f0a35e"
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: '#f0a35e' }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Loại tấn công (Pareto)</h2>
+            <span className="meta">Cột hits · đường % lũy kế</span>
+          </div>
+          {attackPareto.length === 0 ? <p className="empty">Chưa có hit.</p> : (
+            <ResponsiveContainer width="100%" height={280}>
+              <ComposedChart data={attackPareto} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={TICK} minTickGap={24} />
-                <YAxis allowDecimals={false} tick={TICK} width={36} />
-                <ChartTooltip />
-                <Area
-                  type="monotone"
-                  dataKey="count"
-                  name="Cảnh báo"
-                  stroke="#e8b84a"
-                  strokeWidth={2.5}
-                  fill="url(#alertFill)"
+                <XAxis dataKey="name" tick={TICK} />
+                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={32} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={TICK}
+                  width={40}
+                  unit="%"
+                  domain={[0, 100]}
                 />
-              </AreaChart>
+                <ChartTooltip />
+                <Legend />
+                <Bar
+                  yAxisId="left"
+                  dataKey="count"
+                  name="Hits"
+                  fill="#3dcf9a"
+                  radius={[8, 8, 0, 0]}
+                  barSize={28}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="cumulativeShare"
+                  name="% lũy kế"
+                  stroke="#f07178"
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: '#f07178' }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      <div className="grid-2" style={{ marginTop: 12 }}>
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Phân bố SOC (đã gộp)</h2>
+            <span className="meta">Severity · Promote · Triage · AI — một biểu đồ</span>
+          </div>
+          {opsDistribution.length === 0 ? <p className="empty">Chưa có số liệu phân bố.</p> : (
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={opsDistribution} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
+                <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ ...TICK, fontSize: 10 }}
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
+                  height={56}
+                />
+                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={36} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={TICK}
+                  width={36}
+                  unit="%"
+                  domain={[0, 100]}
+                />
+                <ChartTooltip
+                  labelFormatter={(_, payload) => payload?.[0]?.payload?.label || ''}
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="count" name="Số lượng" radius={[6, 6, 0, 0]} barSize={18}>
+                  {opsDistribution.map((row) => (
+                    <Cell key={row.label} fill={row.fill} />
+                  ))}
+                </Bar>
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="share"
+                  name="% so max"
+                  stroke="#f2f6fc"
+                  strokeWidth={2}
+                  strokeDasharray="4 3"
+                  dot={{ r: 2.5, fill: '#f2f6fc' }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
         <div className="panel">
           <div className="panel-head">
-            <h2>Phễu pipeline</h2>
-            <span className="meta">Events → alerts → gắn incident → incidents</span>
-          </div>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={pipelineBars} layout="vertical" margin={{ left: 8, right: 12 }}>
-              <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" allowDecimals={false} tick={TICK} />
-              <YAxis type="category" dataKey="stage" width={96} tick={TICK} />
-              <ChartTooltip />
-              <Bar dataKey="count" name="Số lượng" fill="#6cb6ff" radius={[0, 8, 8, 0]} barSize={22} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <div className="grid-3" style={{ marginTop: 12 }}>
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Mức nghiêm trọng</h2>
-            <span className="meta">{severityTotal} cảnh báo</span>
+            <h2>Tỷ trọng mức nghiêm trọng</h2>
+            <span className="meta">{severityTotal} cảnh báo · pie phụ</span>
           </div>
           {severityPie.length === 0 ? <p className="empty">Chưa có cảnh báo.</p> : (
             <>
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
                     data={severityPie}
                     dataKey="value"
                     nameKey="name"
-                    innerRadius={48}
-                    outerRadius={72}
+                    innerRadius={52}
+                    outerRadius={78}
                     paddingAngle={2}
                   >
                     {severityPie.map((row) => (
@@ -529,6 +704,7 @@ function Dashboard() {
                     ))}
                   </Pie>
                   <ChartTooltip />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
               <div className="sev-row">
@@ -547,111 +723,6 @@ function Dashboard() {
             </>
           )}
         </div>
-
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Cách promote sự cố</h2>
-            <span className="meta">IMMEDIATE vs AGGREGATE</span>
-          </div>
-          {promotePie.length === 0 ? <p className="empty">Chưa có sự cố.</p> : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie
-                  data={promotePie}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="45%"
-                  outerRadius={74}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
-                  {promotePie.map((row) => (
-                    <Cell key={row.name} fill={PROMOTE_COLORS[row.name] || '#8fa3bf'} />
-                  ))}
-                </Pie>
-                <ChartTooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Trạng thái AI explain</h2>
-            <span className="meta">READY / PENDING / FAILED / SKIPPED</span>
-          </div>
-          {explainPie.length === 0 ? <p className="empty">Chưa có trạng thái explain.</p> : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie
-                  data={explainPie}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={42}
-                  outerRadius={70}
-                  paddingAngle={3}
-                >
-                  {explainPie.map((row) => (
-                    <Cell key={row.name} fill={EXPLAIN_COLORS[row.name] || '#8fa3bf'} />
-                  ))}
-                </Pie>
-                <ChartTooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-
-      <div className="grid-2" style={{ marginTop: 12 }}>
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Loại tấn công (rule hits)</h2>
-            <span className="meta">SQLi / XSS / Path traversal</span>
-          </div>
-          {(stats?.topAttackTypes || []).length === 0 ? <p className="empty">Chưa có hit.</p> : (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={stats.topAttackTypes}>
-                <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={TICK} />
-                <YAxis allowDecimals={false} tick={TICK} width={32} />
-                <ChartTooltip />
-                <Bar dataKey="count" name="Hits" fill="#3dcf9a" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Cửa sổ thời gian & trạng thái sự cố</h2>
-            <span className="meta">So sánh volume + lifecycle triage</span>
-          </div>
-          <div className="grid-2" style={{ gap: 8 }}>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={windowCompare}>
-                <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={TICK} />
-                <YAxis allowDecimals={false} tick={TICK} width={28} />
-                <ChartTooltip />
-                <Bar dataKey="count" name="Cảnh báo" fill="#e8b84a" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={incidentStatusBars}>
-                <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={TICK} />
-                <YAxis allowDecimals={false} tick={TICK} width={28} />
-                <ChartTooltip />
-                <Bar dataKey="count" name="Sự cố" radius={[8, 8, 0, 0]}>
-                  {incidentStatusBars.map((row) => (
-                    <Cell key={row.name} fill={row.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
       </div>
 
       <div className="section-title">
@@ -665,51 +736,146 @@ function Dashboard() {
         <div className="panel">
           <div className="panel-head">
             <h2>Top IP nguồn</h2>
-            <span className="meta">Client IP nhiều cảnh báo</span>
+            <span className="meta">Cột alerts · đường % trong top</span>
           </div>
           {topIpsChart.length === 0 ? <p className="empty">Chưa có IP cảnh báo</p> : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={topIpsChart} layout="vertical" margin={{ left: 4, right: 8 }}>
-                <XAxis type="number" allowDecimals={false} tick={TICK} />
-                <YAxis type="category" dataKey="name" width={100} tick={{ ...TICK, fontSize: 10 }} />
+            <ResponsiveContainer width="100%" height={260}>
+              <ComposedChart data={topIpsChart} margin={{ top: 8, right: 8, left: 0, bottom: 36 }}>
+                <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ ...TICK, fontSize: 10 }}
+                  interval={0}
+                  angle={-30}
+                  textAnchor="end"
+                  height={48}
+                />
+                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={32} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={TICK}
+                  width={32}
+                  unit="%"
+                  domain={[0, 100]}
+                />
                 <ChartTooltip />
-                <Bar dataKey="count" name="Alerts" fill="#f0a35e" radius={[0, 6, 6, 0]} barSize={14} />
-              </BarChart>
+                <Bar
+                  yAxisId="left"
+                  dataKey="count"
+                  name="Alerts"
+                  fill="#f0a35e"
+                  radius={[6, 6, 0, 0]}
+                  barSize={22}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="share"
+                  name="% top"
+                  stroke="#f2f6fc"
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: '#f2f6fc' }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
         <div className="panel">
           <div className="panel-head">
             <h2>Top đường dẫn</h2>
-            <span className="meta">Endpoint bị nhắm</span>
+            <span className="meta">Cột alerts · đường % trong top</span>
           </div>
           {topPathsChart.length === 0 ? <p className="empty">Chưa có path cảnh báo</p> : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={topPathsChart} layout="vertical" margin={{ left: 4, right: 8 }}>
-                <XAxis type="number" allowDecimals={false} tick={TICK} />
-                <YAxis type="category" dataKey="short" width={110} tick={{ ...TICK, fontSize: 10 }} />
+            <ResponsiveContainer width="100%" height={260}>
+              <ComposedChart data={topPathsChart} margin={{ top: 8, right: 8, left: 0, bottom: 36 }}>
+                <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="short"
+                  tick={{ ...TICK, fontSize: 10 }}
+                  interval={0}
+                  angle={-30}
+                  textAnchor="end"
+                  height={48}
+                />
+                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={32} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={TICK}
+                  width={32}
+                  unit="%"
+                  domain={[0, 100]}
+                />
                 <ChartTooltip
-                  formatter={(value) => [value, 'Alerts']}
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.name || ''}
                 />
-                <Bar dataKey="count" name="Alerts" fill="#6cb6ff" radius={[0, 6, 6, 0]} barSize={14} />
-              </BarChart>
+                <Bar
+                  yAxisId="left"
+                  dataKey="count"
+                  name="Alerts"
+                  fill="#6cb6ff"
+                  radius={[6, 6, 0, 0]}
+                  barSize={22}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="share"
+                  name="% top"
+                  stroke="#f2f6fc"
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: '#f2f6fc' }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
         <div className="panel">
           <div className="panel-head">
             <h2>Top rule</h2>
-            <span className="meta">Signature kích hoạt nhiều</span>
+            <span className="meta">Cột hits · đường % trong top</span>
           </div>
           {topRulesChart.length === 0 ? <p className="empty">Chưa có detection hit</p> : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={topRulesChart} layout="vertical" margin={{ left: 4, right: 8 }}>
-                <XAxis type="number" allowDecimals={false} tick={TICK} />
-                <YAxis type="category" dataKey="name" width={120} tick={{ ...TICK, fontSize: 10 }} />
+            <ResponsiveContainer width="100%" height={260}>
+              <ComposedChart data={topRulesChart} margin={{ top: 8, right: 8, left: 0, bottom: 36 }}>
+                <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ ...TICK, fontSize: 10 }}
+                  interval={0}
+                  angle={-30}
+                  textAnchor="end"
+                  height={48}
+                />
+                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={32} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={TICK}
+                  width={32}
+                  unit="%"
+                  domain={[0, 100]}
+                />
                 <ChartTooltip />
-                <Bar dataKey="count" name="Hits" fill="#3dcf9a" radius={[0, 6, 6, 0]} barSize={14} />
-              </BarChart>
+                <Bar
+                  yAxisId="left"
+                  dataKey="count"
+                  name="Hits"
+                  fill="#3dcf9a"
+                  radius={[6, 6, 0, 0]}
+                  barSize={22}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="share"
+                  name="% top"
+                  stroke="#f2f6fc"
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: '#f2f6fc' }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
@@ -1445,6 +1611,15 @@ function countNamed(rows, name) {
   return hit ? hit.count : 0;
 }
 
+function withShare(rows) {
+  const list = rows || [];
+  const total = list.reduce((sum, row) => sum + Number(row.count || 0), 0) || 1;
+  return list.map((row) => ({
+    ...row,
+    share: Math.round((Number(row.count || 0) * 1000) / total) / 10,
+  }));
+}
+
 function fmt(value) {
   if (value == null) return '—';
   return Number(value).toLocaleString('vi-VN');
@@ -1465,7 +1640,12 @@ function formatBucket(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('vi-VN', { month: '2-digit', day: '2-digit', hour: '2-digit' });
+  return date.toLocaleString('vi-VN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function shortenPath(path) {

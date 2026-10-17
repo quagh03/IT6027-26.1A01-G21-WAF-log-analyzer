@@ -57,7 +57,7 @@ help:
 		'  make prepare-docker-gradle  Chép Gradle 9.7.1 từ máy vào backend/docker-gradle' \
 		'  make stack              Compose đầy đủ, gồm spring-security-backend' \
 		'  make stack-ui           stack + profile ui tại http://127.0.0.1:3001' \
-		'  make stack-llm          stack-ui + profile llm (Ollama trong Compose)'
+		'  make stack-llm          stack-ui + LLM qua Ollama trên host (không pull image ollama)'
 
 up:
 	$(COMPOSE) up -d $(INFRA)
@@ -126,9 +126,14 @@ stack: prepare-docker-gradle
 stack-ui: prepare-docker-gradle
 	$(COMPOSE) --profile ui up -d --build
 
+# LLM via host Ollama (fast / GPU). Requires `ollama serve` on :11434.
+# Optional Compose Ollama: APP_LLM_ENABLED=true OLLAMA_BASE_URL=http://ollama:11434 \
+#   $(COMPOSE) --profile ui --profile llm up -d --build
 stack-llm: prepare-docker-gradle
-	APP_LLM_ENABLED=true OLLAMA_BASE_URL=http://ollama:11434 OLLAMA_MODEL=$${OLLAMA_MODEL:-llama3.2} \
-		$(COMPOSE) --profile ui --profile llm up -d --build
+	APP_LLM_ENABLED=true \
+	OLLAMA_BASE_URL=$${OLLAMA_BASE_URL:-http://host.docker.internal:11434} \
+	OLLAMA_MODEL=$${OLLAMA_MODEL:-qwen3.5:9b} \
+		$(COMPOSE) --profile ui up -d --build
 
 smoke:
 	curl -fsS -o /dev/null -w 'juice %{http_code}\n' -H 'Host: juice.lab.local' http://127.0.0.1/
