@@ -118,7 +118,8 @@
     }
     .slide.section h2 {
       color: #fff; font-size: clamp(1.8rem, 4.5vh, 3.2rem);
-      text-shadow: 0 2px 12px rgba(0,0,0,.25); max-width: 16ch;
+      text-shadow: 0 2px 12px rgba(0,0,0,.25); max-width: 22ch;
+      margin: 0; line-height: 1.25; padding: 0 6%;
     }
     .slide.section .lead { color: rgba(255,255,255,.9); }
 
@@ -319,6 +320,52 @@
       font-size: clamp(1.45rem, 3.6vh, 2.25rem) !important;
       margin: 0 !important;
       color: #111;
+    }
+    .math-display.compact {
+      justify-content: center;
+      padding: .4rem .5rem;
+      min-height: 0;
+      margin: .35rem 0 .25rem;
+      overflow-x: visible;
+    }
+    .math-display.compact mjx-container {
+      font-size: clamp(.88rem, 1.7vh, 1.05rem) !important;
+      max-width: 100%;
+    }
+    .slide.rule-origin { gap: .35rem; padding-top: 7.2%; }
+    .slide.rule-origin h2 { font-size: clamp(1.1rem, 2.2vh, 1.55rem); }
+    .slide.rule-origin .grid-3 { gap: .5rem; }
+    .slide.rule-origin .card { padding: .55rem .7rem; border-radius: 10px; }
+    .slide.rule-origin .card h3 { font-size: .82rem; margin-bottom: .25rem; }
+    .slide.rule-origin table { font-size: .72rem; }
+    .slide.rule-origin th, .slide.rule-origin td { padding: .22rem .28rem; }
+    .slide.rule-origin ol.tight, .slide.rule-origin ul.tight { font-size: .78rem; }
+    .slide.rule-origin ol.tight li, .slide.rule-origin ul.tight li { margin: .1rem 0; }
+    .slide.rule-origin .note { font-size: .76rem; }
+    .slide.rule-origin .gate-box {
+      margin-top: .35rem; padding: .4rem .55rem; border-radius: 8px;
+      background: #fce8eb; border: 1px solid color-mix(in srgb, var(--hust-red) 30%, var(--line));
+      font-size: .76rem; line-height: 1.35;
+    }
+    .slide.rule-origin .gate-box strong { color: var(--hust-red); }
+    .slide.rule-origin .result-line {
+      margin-top: .35rem; font-size: .76rem; color: var(--muted); line-height: 1.4;
+    }
+    .slide.rule-origin .result-line strong { color: var(--ok); }
+    .slide.rule-origin .formula-legend {
+      margin: .2rem 0 0; padding: 0; list-style: none;
+      font-size: .7rem; color: var(--muted); line-height: 1.35;
+    }
+    .slide.rule-origin .formula-legend li { margin: .12rem 0; }
+    .slide.rule-origin .formula-legend code {
+      font-size: .92em; color: #222; background: #f3f3f5;
+    }
+    .slide.rule-origin .bottom-3 {
+      display: grid; grid-template-columns: .9fr 1.25fr .95fr; gap: .5rem;
+      margin-top: .15rem;
+    }
+    @media (max-width: 960px) {
+      .slide.rule-origin .bottom-3 { grid-template-columns: 1fr; }
     }
     .compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: .65rem; align-items: center; }
     .vs { color: var(--muted); font-weight: 700; text-align: center; }
@@ -694,44 +741,107 @@
               <span class="page-num"></span>
       </section>
 
-      <!-- 9 Rule creation overview -->
-      <section class="slide content dense" data-min="5:45" data-sec="45">
-        <p class="eyebrow">5. Sinh rule · tổng quan</p>
-        <h2>Lab offline <code>detection-rule-generator/</code> — không nằm trên Kafka</h2>
-        <p class="lead">Mô hình ngôn ngữ <strong>không</strong> emit regex sản xuất một bước. Quy trình: dữ liệu → cụm → rule trừu tượng → biên dịch → cổng đánh giá → seed Spring.</p>
-        <div class="flow" style="margin:.35rem 0 .5rem;">
-          <span class="step">Corpora</span><span class="arrow">→</span>
-          <span class="step">Cluster card</span><span class="arrow">→</span>
-          <span class="step focus">Abstract JSON</span><span class="arrow">→</span>
-          <span class="step">Compile regex</span><span class="arrow">→</span>
-          <span class="step focus">Evaluator</span><span class="arrow">→</span>
-          <span class="step">Flyway AI_MINED</span>
-        </div>
-        <div class="grid-2">
+      <!-- 9 Nguồn gốc bộ Detection Rule (gộp: bộ rule + quy trình + công thức cổng) -->
+      <section class="slide content dense rule-origin" data-min="5:40" data-sec="70">
+        <p class="eyebrow">3. Nguồn rule</p>
+        <h2>Nguồn Gốc Bộ Detection Rule</h2>
+        <div class="grid-3">
           <div class="card">
-            <h3>Nguồn dữ liệu (có sẵn)</h3>
-            <ul class="tight">
-              <li>HttpParamsDataset — benign + SQLi/XSS/path</li>
-              <li>FuzzDB — chỉ extract đúng category</li>
-              <li>SQLi CSV ~30&nbsp;000 mẫu trong repo</li>
-            </ul>
-            <p class="note" style="margin-top:.45rem;">Chỉ dùng giá trị có nghĩa trên <code>path</code> / <code>query</code> / <code>ua</code> / <code>raw</code> — không dựa POST body.</p>
+            <h3>SQLI (6) · query</h3>
+            <table>
+              <tr><th>Rule</th><th>W</th></tr>
+              <tr><td>BOOLEAN-001/002</td><td>40</td></tr>
+              <tr><td>COMMENT-001</td><td>35</td></tr>
+              <tr><td>STACKED-001</td><td>50</td></tr>
+              <tr><td>UNION-001</td><td>55</td></tr>
+              <tr><td>TIME-001</td><td>60</td></tr>
+            </table>
           </div>
           <div class="card">
-            <h3>Hai vai trò tách bạch</h3>
+            <h3>XSS (4) · query</h3>
             <table>
-              <tr><th></th><th>Offline</th><th>Runtime</th></tr>
-              <tr><td>Ai chạy</td><td>Python pipeline + prompt</td><td>Spring regex</td></tr>
-              <tr><td>Đầu ra</td><td>14 DetectionRule</td><td>Hit + điểm</td></tr>
-              <tr><td>Mô hình phát hiện?</td><td>Không</td><td><strong>Không</strong></td></tr>
+              <tr><th>Rule</th><th>W</th></tr>
+              <tr><td>ENCODED-001</td><td>40</td></tr>
+              <tr><td>EVENT-001</td><td>45</td></tr>
+              <tr><td>JSURI-001</td><td>50</td></tr>
+              <tr><td>SCRIPT-001</td><td>55</td></tr>
             </table>
+          </div>
+          <div class="card">
+            <h3>PATH (4) · path</h3>
+            <table>
+              <tr><th>Rule</th><th>W</th></tr>
+              <tr><td>DOTDOT / BACKSLASH</td><td>45</td></tr>
+              <tr><td>ENCODED</td><td>50</td></tr>
+              <tr><td>DOUBLE</td><td>55</td></tr>
+            </table>
+          </div>
+        </div>
+        <p class="note" style="margin:.15rem 0 0;">Module <code>detection-rule-generator/</code> chạy <strong>ngoài</strong> pipeline Kafka–Spring. Runtime Spring chỉ khớp regex đã nạp; LLM (nếu bật) chỉ giải thích Incident — không phát hiện.</p>
+        <div class="bottom-3">
+          <div class="card">
+            <h3>Quy trình lab (offline)</h3>
+            <ol class="tight">
+              <li><strong>Nguồn:</strong> HttpParams, FuzzDB, SQLi ~30k</li>
+              <li><strong>Tiền xử lý:</strong> normalize, dedupe, cluster; tách held-out</li>
+              <li><strong>Sinh abstract:</strong> prompt → <code>ai/outputs/</code></li>
+              <li><strong>Compile:</strong> abstract → regex Java</li>
+              <li><strong>Evaluate:</strong> cổng precision / FPR</li>
+              <li><strong>Promote:</strong> <code>production/</code> → Flyway <code>AI_MINED</code></li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>Công thức &amp; tiêu chí cổng</h3>
+            <div class="math-display compact" aria-label="Cong thuc danh gia rule offline">
+              \[
+                \begin{gathered}
+                \mathrm{Precision}=\dfrac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FP}}
+                \qquad
+                \mathrm{FPR}=\dfrac{\mathrm{FP}}{N_{\mathrm{benign}}}
+                \\[0.2em]
+                \mathrm{Recall}=\dfrac{\mathrm{TP}}{N_{\mathrm{held}}}
+                \qquad
+                F_{1}=\dfrac{2\cdot P\cdot R}{P+R}
+                \end{gathered}
+              \]
+            </div>
+            <ul class="formula-legend">
+              <li><code>TP</code> — số payload tấn công (held-out cùng category) bị regex khớp</li>
+              <li><code>FP</code> — số mẫu lành (HttpParams benign) bị khớp nhầm</li>
+              <li><code>N_held</code> / <code>N_benign</code> — tổng mẫu held-out / benign dùng để đo</li>
+              <li><strong>Precision</strong> — trong các lần báo “có tấn công”, bao nhiêu là đúng</li>
+              <li><strong>FPR</strong> — tỷ lệ lành bị báo nhầm (càng thấp càng tốt)</li>
+              <li><strong>Recall</strong> — tỷ lệ tấn công held-out bắt được; <strong>F₁</strong> cân bằng P và R</li>
+              <li><code>TP_eff</code> — TP held-out; nếu = 0 thì lấy hit trên adversarial (rule encode)</li>
+            </ul>
+            <div class="gate-box">
+              <strong>Đạt cổng khi:</strong>
+              Precision ≥ 0,80 &nbsp;∧&nbsp; FPR ≤ 0,02 &nbsp;∧&nbsp; TP<sub>eff</sub> ≥ 1
+              <span style="display:block;margin-top:.15rem;font-weight:500;color:var(--muted);">
+                Ưu tiên ít báo nhầm trước khi seed Flyway; adversarial chỉ bổ sung coverage.
+              </span>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Phân biệt hai giai đoạn</h3>
+            <table>
+              <tr><th></th><th>Sinh rule</th><th>Phát hiện</th></tr>
+              <tr><td>Công cụ</td><td>Prompt + dataset</td><td>Spring + regex</td></tr>
+              <tr><td>Đầu ra</td><td>14 DetectionRule</td><td>Hit + điểm</td></tr>
+              <tr><td>Mô hình?</td><td>Không (chỉ gợi ý)</td><td><strong>Không</strong></td></tr>
+              <tr><td>Ollama</td><td>—</td><td>Giải thích Incident (async)</td></tr>
+            </table>
+            <p class="result-line">
+              Kết quả cổng: <strong>14/14 đạt</strong> · Precision 1,0 · FPR lành 0<br/>
+              Coverage held-out ≈ 50% SQLi · 68% XSS · 48% path
+            </p>
           </div>
         </div>
         <span class="page-num"></span>
       </section>
 
       <!-- 9b Step-by-step AI abstract -->
-      <section class="slide content dense" data-min="6:30" data-sec="55">
+      <section class="slide content dense" data-min="6:50" data-sec="55">
         <p class="eyebrow">5. Sinh rule · từng bước</p>
         <h2>Từ cụm payload tới abstract rule (ví dụ BOOLEAN)</h2>
         <div class="grid-2">
@@ -794,8 +904,7 @@
               <tr><td>Benign (HttpParams)</td><td>FP → FPR</td></tr>
               <tr><td>Adversarial</td><td>Coverage biến thể mã hóa</td></tr>
             </table>
-            <p class="note" style="margin-top:.45rem;"><strong>Đạt cổng khi:</strong> precision ≥ 0,80 · FPR ≤ 0,02 · có ít nhất một hit hữu hiệu.</p>
-            <p class="note" style="margin:0;">14/14 đạt → <code>rules/production/</code> → Flyway V2. Báo cáo: precision 1,0; FPR lành 0; coverage held-out ~50% / 68% / 48%.</p>
+            <p class="note" style="margin-top:.45rem;">Công thức + tiêu chí cổng nằm ở slide <em>Nguồn Gốc Bộ Detection Rule</em>. 14/14 đạt → <code>production/</code> → Flyway V2.</p>
           </div>
         </div>
         <span class="page-num"></span>
@@ -838,51 +947,11 @@
         <span class="page-num"></span>
       </section>
 
-      <!-- 10 Score origin: rule weights -->
-      <section class="slide content dense" data-min="9:10" data-sec="45">
-        <p class="eyebrow">5. Trọng số rule sau khi nạp</p>
-        <h2>Mỗi lần khớp rule góp một trọng số cố định</h2>
-        <p class="lead">Giá trị <code>detection_hit.weight</code> lấy từ bảng rule (Flyway V2, <code>AI_MINED</code>). Điểm rủi ro là tổng trọng số (cộng hệ số bổ sung) — không do mô hình ngôn ngữ gán lúc chạy.</p>
-        <div class="grid-3">
-          <div class="card">
-            <h3>SQLI (6) · query</h3>
-            <table>
-              <tr><th>Rule</th><th>W</th></tr>
-              <tr><td>BOOLEAN-001/002</td><td>40</td></tr>
-              <tr><td>COMMENT-001</td><td>35</td></tr>
-              <tr><td>STACKED-001</td><td>50</td></tr>
-              <tr><td>UNION-001</td><td>55</td></tr>
-              <tr><td>TIME-001</td><td>60</td></tr>
-            </table>
-          </div>
-          <div class="card">
-            <h3>XSS (4) · query</h3>
-            <table>
-              <tr><th>Rule</th><th>W</th></tr>
-              <tr><td>ENCODED-001</td><td>40</td></tr>
-              <tr><td>EVENT-001</td><td>45</td></tr>
-              <tr><td>JSURI-001</td><td>50</td></tr>
-              <tr><td>SCRIPT-001</td><td>55</td></tr>
-            </table>
-          </div>
-          <div class="card">
-            <h3>PATH (4) · path</h3>
-            <table>
-              <tr><th>Rule</th><th>W</th></tr>
-              <tr><td>DOTDOT / BACKSLASH</td><td>45</td></tr>
-              <tr><td>ENCODED</td><td>50</td></tr>
-              <tr><td>DOUBLE</td><td>55</td></tr>
-            </table>
-            <!-- <p class="note" style="margin-top:.5rem;">Một rule có trọng số &lt; 60 thường <strong>chưa</strong> đủ để mở Alert nếu đứng riêng.</p> -->
-          </div>
-        </div>
-              <span class="page-num"></span>
-      </section>
-
-      <!-- 11 Score formula -->
-      <section class="slide content dense" data-min="7:30" data-sec="55">
+      <!-- 10 Score formula -->
+      <section class="slide content dense" data-min="9:10" data-sec="55">
         <p class="eyebrow">5. Công thức điểm rủi ro</p>
         <h2>Điểm rủi ro của sự kiện</h2>
+        <p class="lead" style="margin-bottom:.35rem;">Trọng số <code>detection_hit.weight</code> lấy từ bảng rule (Flyway V2, <code>AI_MINED</code>) — không do mô hình gán lúc chạy.</p>
         <div class="math-display" aria-label="Cong thuc diem rui ro">
           \[
             S(e)=\min\!\left(100,\sum_{h\in H_e}w_h+B_{\mathrm{freq}}+B_{\mathrm{status}}\right).
@@ -1144,17 +1213,30 @@ sqli-union-bool severity=<span style="color:#e85d5d">CRITICAL</span> http=200
           </div>
           <div class="card">
             <h3>Kết quả chấm Alert của backend</h3>
-            <p class="note" style="margin:0 0 .35rem;">780 case log-visible · nhãn OWASP true 467 / false 313</p>
-            <div class="matrix" style="max-width:100%;font-size:.74rem;">
+            <p class="note" style="margin:0 0 .3rem;">780 case log-visible · nhãn OWASP true 467 / false 313</p>
+            <div class="matrix" style="max-width:100%;font-size:.72rem;">
               <div></div><div class="note">Có Alert</div><div class="note">Không</div>
               <div class="note">true</div><div class="cell tp"><strong>TP 467</strong></div><div class="cell fn"><strong>FN 0</strong></div>
               <div class="note">false</div><div class="cell fp"><strong>FP 313</strong></div><div class="cell tn"><strong>TN 0</strong></div>
             </div>
-            <p style="margin:.45rem 0 0;font-family:var(--mono);font-size:.82rem;line-height:1.45;">
-              TPR = 1 · FPR = 1<br/>
-              Score<sub>Benchmark</sub> = TPR − FPR = <span style="color:var(--accent2);font-size:1.2rem;"><strong>0</strong></span>
-            </p>
-            <table style="margin-top:.4rem;font-size:.72rem;">
+            <table style="margin-top:.35rem;font-size:.68rem;">
+              <tr><th>Lables</th><th>Ý nghĩa (nhãn Benchmark × Alert)</th></tr>
+              <tr><td><strong>TP</strong></td><td>true + có Alert — bắt đúng case dễ tổn thương</td></tr>
+              <tr><td><strong>FN</strong></td><td>true + không Alert — bỏ sót</td></tr>
+              <tr><td><strong>FP</strong></td><td>false + có Alert — báo trên case “an toàn”</td></tr>
+              <tr><td><strong>TN</strong></td><td>false + không Alert — bỏ qua đúng</td></tr>
+            </table>
+            <div class="math-display compact" aria-label="Cong thuc TPR FPR Score Benchmark">
+              \[
+                \begin{gathered}
+                \mathrm{TPR}=\dfrac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FN}}
+                \qquad
+                \mathrm{FPR}=\dfrac{\mathrm{FP}}{\mathrm{FP}+\mathrm{TN}}\\[0.4em]
+                \mathrm{Score}=\mathrm{TPR}-\mathrm{FPR}
+                \end{gathered}
+              \]
+            </div>
+            <table style="margin-top:.25rem;font-size:.7rem;">
               <tr><th>Rule-family</th><th>TP</th><th>FP</th><th>Sc</th></tr>
               <tr><td>SQLI</td><td>194</td><td>119</td><td>0</td></tr>
               <tr><td>XSS</td><td>190</td><td>131</td><td>0</td></tr>

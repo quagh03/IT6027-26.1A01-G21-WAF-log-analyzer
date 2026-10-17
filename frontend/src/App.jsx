@@ -686,23 +686,28 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="section-title">
-        <div>
-          <h2>Sự cố gần đây</h2>
-          <p>Ưu tiên OPEN / ACK — bấm vào để triage và xem giải thích AI</p>
+      <div className="feed-split">
+        <div className="feed-col">
+          <div className="section-title">
+            <div>
+              <h2>Sự cố gần đây</h2>
+              <p>Ưu tiên OPEN / ACK</p>
+            </div>
+            <NavLink to="/incidents">Xem tất cả →</NavLink>
+          </div>
+          <IncidentTable rows={incidents} compact />
         </div>
-        <NavLink to="/incidents">Xem tất cả →</NavLink>
-      </div>
-      <IncidentTable rows={incidents} compact />
-
-      <div className="section-title">
-        <div>
-          <h2>Cảnh báo mới nhất</h2>
-          <p>Feed realtime qua SSE — gồm cả cảnh báo chưa promote thành sự cố</p>
+        <div className="feed-col">
+          <div className="section-title">
+            <div>
+              <h2>Cảnh báo mới nhất</h2>
+              <p>Feed realtime qua SSE</p>
+            </div>
+            <NavLink to="/alerts">Xem tất cả →</NavLink>
+          </div>
+          <AlertTable rows={alerts} />
         </div>
-        <NavLink to="/alerts">Xem tất cả →</NavLink>
       </div>
-      <AlertTable rows={alerts} />
     </section>
   );
 }
