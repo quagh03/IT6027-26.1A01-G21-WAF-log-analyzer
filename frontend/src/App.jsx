@@ -62,6 +62,25 @@ function ChartTooltip(props) {
 
 export function App() {
   const [authed, setAuthed] = useState(() => Boolean(getToken()));
+  const [navOpen, setNavOpen] = useState(() => {
+    try {
+      return localStorage.getItem('soc-nav-open') !== '0';
+    } catch {
+      return true;
+    }
+  });
+
+  function toggleNav() {
+    setNavOpen((open) => {
+      const next = !open;
+      try {
+        localStorage.setItem('soc-nav-open', next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
 
   if (!authed) {
     return (
@@ -72,27 +91,50 @@ export function App() {
     );
   }
   return (
-    <div className="shell">
-      <nav className="nav">
-        <div className="brand">
-          <strong>WAF SOC</strong>
-          <span>Giám sát tấn công web · Juice Shop lab</span>
+    <div className={`shell ${navOpen ? '' : 'nav-collapsed'}`}>
+      <nav className="nav" aria-label="Điều hướng SOC">
+        <div className="nav-top">
+          <div className="brand">
+            <strong>WAF SOC</strong>
+            <span className="brand-sub">Giám sát tấn công web · Juice Shop lab</span>
+          </div>
+          <button
+            type="button"
+            className="nav-toggle"
+            onClick={toggleNav}
+            title={navOpen ? 'Thu gọn menu' : 'Mở rộng menu'}
+            aria-expanded={navOpen}
+            aria-label={navOpen ? 'Thu gọn menu' : 'Mở rộng menu'}
+          >
+            {navOpen ? '⟨' : '⟩'}
+          </button>
         </div>
-        <NavLink to="/" end>Tổng quan</NavLink>
-        <NavLink to="/alerts">Cảnh báo</NavLink>
-        <NavLink to="/incidents">Sự cố</NavLink>
+        <NavLink to="/" end title="Tổng quan">
+          <span className="nav-ico" aria-hidden>◉</span>
+          <span className="nav-label">Tổng quan</span>
+        </NavLink>
+        <NavLink to="/alerts" title="Cảnh báo">
+          <span className="nav-ico" aria-hidden>▲</span>
+          <span className="nav-label">Cảnh báo</span>
+        </NavLink>
+        <NavLink to="/incidents" title="Sự cố">
+          <span className="nav-ico" aria-hidden>⚑</span>
+          <span className="nav-label">Sự cố</span>
+        </NavLink>
         <div className="spacer" />
-        <span className="role-chip">{role() || 'SOC'}</span>
+        <span className="role-chip" title={role() || 'SOC'}>{role() || 'SOC'}</span>
         <button
-          className="ghost"
+          className="ghost logout-btn"
           type="button"
+          title="Đăng xuất"
           onClick={() => {
             clearSession();
             setAuthed(false);
             window.location.assign('/login');
           }}
         >
-          Đăng xuất
+          <span className="nav-label">Đăng xuất</span>
+          <span className="nav-ico logout-ico" aria-hidden>⎋</span>
         </button>
       </nav>
       <main className="main">
@@ -254,14 +296,11 @@ function SituationBrief({ stats }) {
         : 'Lab đang yên — chưa có tín hiệu nóng';
 
   return (
-    <div className="situation">
+    <div className="situation situation-compact">
       <div className="situation-head">
         <div>
           <div className="situation-kicker">Tóm tắt tình hình</div>
           <h2 className="situation-title">{headline}</h2>
-          <p className="situation-sub">
-            Tổng hợp từ số liệu overview (không phải Ollama) — giúp SOC đọc nhanh trước khi mở biểu đồ.
-          </p>
         </div>
         <div className="situation-pulse">
           <span className={`dot ${open > 0 || critical > 10 ? 'hot' : 'calm'}`} />
@@ -269,11 +308,10 @@ function SituationBrief({ stats }) {
         </div>
       </div>
       <div className="situation-grid">
-        {items.map((item) => (
-          <article key={item.label} className={`situation-card ${item.tone}`}>
+        {items.slice(0, 6).map((item) => (
+          <article key={item.label} className={`situation-card ${item.tone}`} title={item.note}>
             <span className="situation-label">{item.label}</span>
             <strong className="situation-value">{item.value}</strong>
-            <span className="situation-note">{item.note}</span>
           </article>
         ))}
       </div>
@@ -430,451 +468,218 @@ function Dashboard() {
   );
 
   return (
-    <section>
-      <div className="page-head">
+    <section className="dashboard-dense">
+      <div className="page-head page-head-compact">
         <div>
-          <h1>Tổng quan giám sát</h1>
-          <p className="sub">
-            Đọc nhanh tình hình lab: traffic → cảnh báo → sự cố → giải thích AI.
-            Lọc theo ứng dụng để so sánh scope Juice Shop.
-          </p>
+          <h1>Tổng quan</h1>
+          <p className="sub">Traffic → cảnh báo → sự cố · lọc theo app</p>
         </div>
         <div className="controls">
           <AppFilter appId={appId} setAppId={setAppId} />
           {live
-            ? <span className="live">SSE đang nhận sự kiện</span>
-            : <span className="wait">Đang chờ SSE</span>}
+            ? <span className="live">SSE</span>
+            : <span className="wait">Chờ SSE</span>}
         </div>
       </div>
 
       <SituationBrief stats={stats} />
 
-      <div className="kpis">
+      <div className="kpis kpis-compact">
         <div className="kpi">
-          <span className="label">Sự kiện đã ingest</span>
+          <span className="label">Events</span>
           <span className="value">{fmt(stats?.eventCount)}</span>
-          <span className="hint">Mọi request qua Nginx đã chuẩn hóa vào PostgreSQL</span>
         </div>
         <div className="kpi">
-          <span className="label">Cảnh báo</span>
+          <span className="label">Alerts</span>
           <span className="value">{fmt(stats?.alertCount)}</span>
-          <span className="hint">
-            {fmt(stats?.alertsLast24Hours)} / 24h · {fmt(stats?.alertsLastHour)} / 1h
-          </span>
+          <span className="hint">{fmt(stats?.alertsLastHour)}/1h · {fmt(stats?.alertsLast24Hours)}/24h</span>
         </div>
         <div className={`kpi ${stats?.openIncidentCount ? 'emphasis' : 'ok'}`}>
-          <span className="label">Sự cố OPEN</span>
+          <span className="label">OPEN</span>
           <span className="value">{fmt(stats?.openIncidentCount)}</span>
-          <span className="hint">
-            ACK {fmt(stats?.ackIncidentCount)} · CLOSED {fmt(stats?.closedIncidentCount)}
-          </span>
+          <span className="hint">ACK {fmt(stats?.ackIncidentCount)} · CL {fmt(stats?.closedIncidentCount)}</span>
         </div>
         <div className="kpi">
           <span className="label">CRITICAL</span>
           <span className="value">{fmt(stats?.criticalAlertCount)}</span>
-          <span className="hint">
-            Điểm TB {stats?.averageAlertScore ?? '—'} · max {stats?.maxAlertScore ?? '—'}
-          </span>
+          <span className="hint">TB {stats?.averageAlertScore ?? '—'} · max {stats?.maxAlertScore ?? '—'}</span>
         </div>
       </div>
 
-      <div className="chips" style={{ marginBottom: 16 }}>
-        <span className="stat-chip">Chưa gắn incident: <strong>{fmt(stats?.unattachedAlertCount)}</strong></span>
-        <span className="stat-chip">IMMEDIATE: <strong>{countNamed(stats?.promoteReasons, 'IMMEDIATE')}</strong></span>
-        <span className="stat-chip">AGGREGATE: <strong>{countNamed(stats?.promoteReasons, 'AGGREGATE')}</strong></span>
-        <span className="stat-chip">Explain READY: <strong>{fmt(stats?.explanationByStatus?.READY)}</strong></span>
-        <span className="stat-chip">Explain FAILED: <strong>{fmt(stats?.explanationByStatus?.FAILED)}</strong></span>
+      <div className="chips chips-compact">
+        <span className="stat-chip">Orphan <strong>{fmt(stats?.unattachedAlertCount)}</strong></span>
+        <span className="stat-chip">IMM <strong>{countNamed(stats?.promoteReasons, 'IMMEDIATE')}</strong></span>
+        <span className="stat-chip">AGG <strong>{countNamed(stats?.promoteReasons, 'AGGREGATE')}</strong></span>
+        <span className="stat-chip">AI OK <strong>{fmt(stats?.explanationByStatus?.READY)}</strong></span>
+        <span className="stat-chip">AI fail <strong>{fmt(stats?.explanationByStatus?.FAILED)}</strong></span>
       </div>
 
-      <div className="section-title">
-        <div>
-          <h2>Biểu đồ kết hợp</h2>
-          <p>
-            Đã gộp nhiều chiều vào cùng biểu đồ (cột + đường/area). Severity / promote / triage / AI
-            nằm chung một panel — không còn 3 pie riêng.
-          </p>
-        </div>
-      </div>
-
-      <div className="panel" style={{ marginBottom: 12 }}>
-        <div className="panel-head">
-          <h2>Timeline cảnh báo (cột + TB trượt + lũy kế)</h2>
-          <span className="meta">Bucket 15 phút · Trái: volume · Phải: lũy kế</span>
-        </div>
-        {timeline.length === 0 ? <p className="empty">Chưa có dữ liệu timeline.</p> : (
-          <ResponsiveContainer width="100%" height={320}>
-            <ComposedChart data={timeline} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="cumFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3dcf9a" stopOpacity={0.28} />
-                  <stop offset="100%" stopColor="#3dcf9a" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-              <XAxis dataKey="label" tick={TICK} minTickGap={24} />
-              <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={36} />
-              <YAxis yAxisId="right" orientation="right" allowDecimals={false} tick={TICK} width={44} />
-              <ChartTooltip />
-              <Legend />
-              <Bar
-                yAxisId="left"
-                dataKey="count"
-                name="Theo giờ"
-                fill="#e8b84a"
-                radius={[4, 4, 0, 0]}
-                barSize={22}
-              />
-              <Line
-                yAxisId="left"
-                type="monotone"
-                dataKey="rollingAvg"
-                name="TB 3 giờ"
-                stroke="#6cb6ff"
-                strokeWidth={2.5}
-                dot={false}
-              />
-              <Area
-                yAxisId="right"
-                type="monotone"
-                dataKey="cumulative"
-                name="Lũy kế"
-                stroke="#3dcf9a"
-                strokeWidth={2}
-                fill="url(#cumFill)"
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-
-      <div className="grid-2">
-        <div className="panel">
+      <div className="charts-board">
+        <div className="panel chart-span-2">
           <div className="panel-head">
-            <h2>Phễu pipeline</h2>
-            <span className="meta">Cột số lượng · đường % / events</span>
+            <h2>Timeline</h2>
+            <span className="meta">15p · cột + TB + lũy kế</span>
           </div>
-          <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={pipelineBars} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-              <XAxis dataKey="stage" tick={TICK} />
-              <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={40} />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                tick={TICK}
-                width={40}
-                unit="%"
-                domain={[0, 100]}
-              />
-              <ChartTooltip />
-              <Legend />
-              <Bar
-                yAxisId="left"
-                dataKey="count"
-                name="Số lượng"
-                fill="#6cb6ff"
-                radius={[8, 8, 0, 0]}
-                barSize={28}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="yieldPct"
-                name="% / events"
-                stroke="#f0a35e"
-                strokeWidth={2.5}
-                dot={{ r: 4, fill: '#f0a35e' }}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Loại tấn công (Pareto)</h2>
-            <span className="meta">Cột hits · đường % lũy kế</span>
-          </div>
-          {attackPareto.length === 0 ? <p className="empty">Chưa có hit.</p> : (
-            <ResponsiveContainer width="100%" height={280}>
-              <ComposedChart data={attackPareto} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          {timeline.length === 0 ? <p className="empty">Chưa có timeline.</p> : (
+            <ResponsiveContainer width="100%" height={200}>
+              <ComposedChart data={timeline} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="cumFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3dcf9a" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="#3dcf9a" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={TICK} />
+                <XAxis dataKey="label" tick={TICK} minTickGap={20} />
                 <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={32} />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tick={TICK}
-                  width={40}
-                  unit="%"
-                  domain={[0, 100]}
-                />
+                <YAxis yAxisId="right" orientation="right" allowDecimals={false} tick={TICK} width={36} />
                 <ChartTooltip />
-                <Legend />
-                <Bar
-                  yAxisId="left"
-                  dataKey="count"
-                  name="Hits"
-                  fill="#3dcf9a"
-                  radius={[8, 8, 0, 0]}
-                  barSize={28}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="cumulativeShare"
-                  name="% lũy kế"
-                  stroke="#f07178"
-                  strokeWidth={2.5}
-                  dot={{ r: 3, fill: '#f07178' }}
-                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar yAxisId="left" dataKey="count" name="Volume" fill="#e8b84a" radius={[3, 3, 0, 0]} barSize={16} />
+                <Line yAxisId="left" type="monotone" dataKey="rollingAvg" name="TB" stroke="#6cb6ff" strokeWidth={2} dot={false} />
+                <Area yAxisId="right" type="monotone" dataKey="cumulative" name="Lũy kế" stroke="#3dcf9a" strokeWidth={2} fill="url(#cumFill)" />
               </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
-      </div>
 
-      <div className="grid-2" style={{ marginTop: 12 }}>
         <div className="panel">
           <div className="panel-head">
-            <h2>Phân bố SOC (đã gộp)</h2>
-            <span className="meta">Severity · Promote · Triage · AI — một biểu đồ</span>
+            <h2>Pipeline</h2>
+            <span className="meta">cột + % yield</span>
           </div>
-          {opsDistribution.length === 0 ? <p className="empty">Chưa có số liệu phân bố.</p> : (
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={opsDistribution} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
+          <ResponsiveContainer width="100%" height={200}>
+            <ComposedChart data={pipelineBars} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
+              <XAxis dataKey="stage" tick={{ ...TICK, fontSize: 10 }} />
+              <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={32} />
+              <YAxis yAxisId="right" orientation="right" tick={TICK} width={32} unit="%" domain={[0, 100]} />
+              <ChartTooltip />
+              <Bar yAxisId="left" dataKey="count" name="SL" fill="#6cb6ff" radius={[6, 6, 0, 0]} barSize={22} />
+              <Line yAxisId="right" type="monotone" dataKey="yieldPct" name="%/ev" stroke="#f0a35e" strokeWidth={2} dot={{ r: 3 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Attack Pareto</h2>
+            <span className="meta">hits + % lũy kế</span>
+          </div>
+          {attackPareto.length === 0 ? <p className="empty">Chưa có hit.</p> : (
+            <ResponsiveContainer width="100%" height={200}>
+              <ComposedChart data={attackPareto} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ ...TICK, fontSize: 10 }}
-                  interval={0}
-                  angle={-35}
-                  textAnchor="end"
-                  height={56}
-                />
-                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={36} />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tick={TICK}
-                  width={36}
-                  unit="%"
-                  domain={[0, 100]}
-                />
-                <ChartTooltip
-                  labelFormatter={(_, payload) => payload?.[0]?.payload?.label || ''}
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="count" name="Số lượng" radius={[6, 6, 0, 0]} barSize={18}>
+                <XAxis dataKey="name" tick={{ ...TICK, fontSize: 10 }} />
+                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={28} />
+                <YAxis yAxisId="right" orientation="right" tick={TICK} width={32} unit="%" domain={[0, 100]} />
+                <ChartTooltip />
+                <Bar yAxisId="left" dataKey="count" name="Hits" fill="#3dcf9a" radius={[6, 6, 0, 0]} barSize={22} />
+                <Line yAxisId="right" type="monotone" dataKey="cumulativeShare" name="%Σ" stroke="#f07178" strokeWidth={2} dot={{ r: 2.5 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Phân bố SOC</h2>
+            <span className="meta">sev · promote · triage · AI</span>
+          </div>
+          {opsDistribution.length === 0 ? <p className="empty">Chưa có số liệu.</p> : (
+            <ResponsiveContainer width="100%" height={200}>
+              <ComposedChart data={opsDistribution} margin={{ top: 4, right: 4, left: 0, bottom: 28 }}>
+                <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ ...TICK, fontSize: 9 }} interval={0} angle={-28} textAnchor="end" height={40} />
+                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={28} />
+                <YAxis yAxisId="right" orientation="right" tick={TICK} width={28} unit="%" domain={[0, 100]} />
+                <ChartTooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.label || ''} />
+                <Bar yAxisId="left" dataKey="count" name="SL" radius={[4, 4, 0, 0]} barSize={14}>
                   {opsDistribution.map((row) => (
                     <Cell key={row.label} fill={row.fill} />
                   ))}
                 </Bar>
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="share"
-                  name="% so max"
-                  stroke="#f2f6fc"
-                  strokeWidth={2}
-                  strokeDasharray="4 3"
-                  dot={{ r: 2.5, fill: '#f2f6fc' }}
-                />
+                <Line yAxisId="right" type="monotone" dataKey="share" name="%max" stroke="#f2f6fc" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
+
         <div className="panel">
           <div className="panel-head">
-            <h2>Tỷ trọng mức nghiêm trọng</h2>
-            <span className="meta">{severityTotal} cảnh báo · pie phụ</span>
+            <h2>Severity</h2>
+            <span className="meta">{severityTotal} alerts</span>
           </div>
           {severityPie.length === 0 ? <p className="empty">Chưa có cảnh báo.</p> : (
-            <>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={severityPie}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={52}
-                    outerRadius={78}
-                    paddingAngle={2}
-                  >
-                    {severityPie.map((row) => (
-                      <Cell key={row.name} fill={SEVERITY_COLORS[row.name] || '#8fa3bf'} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="sev-row">
-                {SEVERITIES.map((name) => {
-                  const count = Number(stats?.alertsBySeverity?.[name] || 0);
-                  const pct = severityTotal ? Math.round((count * 100) / severityTotal) : 0;
-                  return (
-                    <div className="sev-item" key={name}>
-                      <span className={`badge ${name}`}>{name}</span>
-                      <div className="bar"><div className={`fill ${name}`} style={{ width: `${pct}%` }} /></div>
-                      <span className="count">{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="section-title">
-        <div>
-          <h2>Xếp hạng mục tiêu</h2>
-          <p>IP, path và rule — xem ai/đâu đang bị nhắm nhiều nhất</p>
-        </div>
-      </div>
-
-      <div className="grid-3">
-        <div className="panel">
-          <div className="panel-head">
-            <h2>Top IP nguồn</h2>
-            <span className="meta">Cột alerts · đường % trong top</span>
-          </div>
-          {topIpsChart.length === 0 ? <p className="empty">Chưa có IP cảnh báo</p> : (
-            <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={topIpsChart} margin={{ top: 8, right: 8, left: 0, bottom: 36 }}>
-                <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ ...TICK, fontSize: 10 }}
-                  interval={0}
-                  angle={-30}
-                  textAnchor="end"
-                  height={48}
-                />
-                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={32} />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tick={TICK}
-                  width={32}
-                  unit="%"
-                  domain={[0, 100]}
-                />
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={severityPie} dataKey="value" nameKey="name" innerRadius={42} outerRadius={68} paddingAngle={2}>
+                  {severityPie.map((row) => (
+                    <Cell key={row.name} fill={SEVERITY_COLORS[row.name] || '#8fa3bf'} />
+                  ))}
+                </Pie>
                 <ChartTooltip />
-                <Bar
-                  yAxisId="left"
-                  dataKey="count"
-                  name="Alerts"
-                  fill="#f0a35e"
-                  radius={[6, 6, 0, 0]}
-                  barSize={22}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="share"
-                  name="% top"
-                  stroke="#f2f6fc"
-                  strokeWidth={2}
-                  dot={{ r: 2.5, fill: '#f2f6fc' }}
-                />
-              </ComposedChart>
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
             </ResponsiveContainer>
           )}
         </div>
+
         <div className="panel">
           <div className="panel-head">
-            <h2>Top đường dẫn</h2>
-            <span className="meta">Cột alerts · đường % trong top</span>
+            <h2>Top IP</h2>
+            <span className="meta">alerts + %</span>
           </div>
-          {topPathsChart.length === 0 ? <p className="empty">Chưa có path cảnh báo</p> : (
-            <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={topPathsChart} margin={{ top: 8, right: 8, left: 0, bottom: 36 }}>
+          {topIpsChart.length === 0 ? <p className="empty">Chưa có IP</p> : (
+            <ResponsiveContainer width="100%" height={200}>
+              <ComposedChart data={topIpsChart} margin={{ top: 4, right: 4, left: 0, bottom: 28 }}>
                 <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="short"
-                  tick={{ ...TICK, fontSize: 10 }}
-                  interval={0}
-                  angle={-30}
-                  textAnchor="end"
-                  height={48}
-                />
-                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={32} />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tick={TICK}
-                  width={32}
-                  unit="%"
-                  domain={[0, 100]}
-                />
-                <ChartTooltip
-                  labelFormatter={(_, payload) => payload?.[0]?.payload?.name || ''}
-                />
-                <Bar
-                  yAxisId="left"
-                  dataKey="count"
-                  name="Alerts"
-                  fill="#6cb6ff"
-                  radius={[6, 6, 0, 0]}
-                  barSize={22}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="share"
-                  name="% top"
-                  stroke="#f2f6fc"
-                  strokeWidth={2}
-                  dot={{ r: 2.5, fill: '#f2f6fc' }}
-                />
+                <XAxis dataKey="name" tick={{ ...TICK, fontSize: 9 }} interval={0} angle={-25} textAnchor="end" height={40} />
+                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={28} />
+                <YAxis yAxisId="right" orientation="right" tick={TICK} width={28} unit="%" domain={[0, 100]} />
+                <ChartTooltip />
+                <Bar yAxisId="left" dataKey="count" name="Alerts" fill="#f0a35e" radius={[4, 4, 0, 0]} barSize={16} />
+                <Line yAxisId="right" type="monotone" dataKey="share" name="%" stroke="#f2f6fc" strokeWidth={1.5} dot={{ r: 2 }} />
               </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
+
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Top path</h2>
+            <span className="meta">alerts + %</span>
+          </div>
+          {topPathsChart.length === 0 ? <p className="empty">Chưa có path</p> : (
+            <ResponsiveContainer width="100%" height={200}>
+              <ComposedChart data={topPathsChart} margin={{ top: 4, right: 4, left: 0, bottom: 28 }}>
+                <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
+                <XAxis dataKey="short" tick={{ ...TICK, fontSize: 9 }} interval={0} angle={-25} textAnchor="end" height={40} />
+                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={28} />
+                <YAxis yAxisId="right" orientation="right" tick={TICK} width={28} unit="%" domain={[0, 100]} />
+                <ChartTooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.name || ''} />
+                <Bar yAxisId="left" dataKey="count" name="Alerts" fill="#6cb6ff" radius={[4, 4, 0, 0]} barSize={16} />
+                <Line yAxisId="right" type="monotone" dataKey="share" name="%" stroke="#f2f6fc" strokeWidth={1.5} dot={{ r: 2 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
         <div className="panel">
           <div className="panel-head">
             <h2>Top rule</h2>
-            <span className="meta">Cột hits · đường % trong top</span>
+            <span className="meta">hits + %</span>
           </div>
-          {topRulesChart.length === 0 ? <p className="empty">Chưa có detection hit</p> : (
-            <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={topRulesChart} margin={{ top: 8, right: 8, left: 0, bottom: 36 }}>
+          {topRulesChart.length === 0 ? <p className="empty">Chưa có rule</p> : (
+            <ResponsiveContainer width="100%" height={200}>
+              <ComposedChart data={topRulesChart} margin={{ top: 4, right: 4, left: 0, bottom: 28 }}>
                 <CartesianGrid stroke="#2a3850" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ ...TICK, fontSize: 10 }}
-                  interval={0}
-                  angle={-30}
-                  textAnchor="end"
-                  height={48}
-                />
-                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={32} />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tick={TICK}
-                  width={32}
-                  unit="%"
-                  domain={[0, 100]}
-                />
+                <XAxis dataKey="name" tick={{ ...TICK, fontSize: 9 }} interval={0} angle={-25} textAnchor="end" height={40} />
+                <YAxis yAxisId="left" allowDecimals={false} tick={TICK} width={28} />
+                <YAxis yAxisId="right" orientation="right" tick={TICK} width={28} unit="%" domain={[0, 100]} />
                 <ChartTooltip />
-                <Bar
-                  yAxisId="left"
-                  dataKey="count"
-                  name="Hits"
-                  fill="#3dcf9a"
-                  radius={[6, 6, 0, 0]}
-                  barSize={22}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="share"
-                  name="% top"
-                  stroke="#f2f6fc"
-                  strokeWidth={2}
-                  dot={{ r: 2.5, fill: '#f2f6fc' }}
-                />
+                <Bar yAxisId="left" dataKey="count" name="Hits" fill="#3dcf9a" radius={[4, 4, 0, 0]} barSize={16} />
+                <Line yAxisId="right" type="monotone" dataKey="share" name="%" stroke="#f2f6fc" strokeWidth={1.5} dot={{ r: 2 }} />
               </ComposedChart>
             </ResponsiveContainer>
           )}
